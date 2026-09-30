@@ -577,8 +577,8 @@ void vAdjustHitboxes(void)
  * Globals: reads gkgtEngineObjects, gkgtKgtSystem, giInputBuffer, giInputBufferPos, giObjectLayers;
  * changes engine objects, gkgtLoadedCharacter[] (last opponent/attacker, hit flags, times hit, combo
  * count, life and gauge through vAddToHealth/vAddToSpecialGauge) and gkgtGameState.iTargetPlayer.
- * Not byte-identical: VC6 compiles this C to slightly different register and stack-slot choices.
- * The `main` branch builds this function from the original's machine code instead.
+ * VC6 history: VC6 compiles this C to slightly different register and stack-slot choices, so the
+ * main branch builds this function from the original's machine code; this branch compiles the C.
  */
 void vHandleHitboxEffects(void)
 {
@@ -2246,7 +2246,12 @@ _Static_assert(offsetof(kgt_character_struct, pLastOpponent) == OWNER_OFS_pLastO
                && offsetof(kgt_character_struct, shVarA) == OWNER_OFS_shVarA, "owner view offsets");
 #endif
 
-/* the original address of the owner structure of the current object's script, 0 for a character */
+/*
+ * Returns the original address of the structure that owns the current object's script, when that is
+ * a file structure other than a character: gkgtKgtSystem (system objects), gkgtLoadedDemo (demo
+ * objects) or gkgtLoadedStage (stage objects); 0 for players and their objects.
+ * Globals: reads gpkgtCurrentEngineObject.
+ */
 static uint32_t uOwnerAddr32(void)
 {
     switch (gpkgtCurrentEngineObject->iObjectType) {
@@ -2257,35 +2262,47 @@ static uint32_t uOwnerAddr32(void)
     return 0;
 }
 
-/* byte uOfs of the owner viewed as a kgt_character_struct (original offset), for a non-character owner */
+/*
+ * Returns the byte that the original reaches at offset uOfs of the current script's owner viewed as a
+ * kgt_character_struct (uOfs: the original's field offset, OWNER_OFS_*), for a non-character owner
+ * (uOwnerAddr32() != 0): the same byte in this build, through pBssAddr32.
+ */
 static unsigned char *pOwnerByte(uint32_t uOfs)
 {
-    static unsigned char bDummy;
-    unsigned char *p = pBssAddr32(uOwnerAddr32() + uOfs);
+    static unsigned char cDummy;    /* stands in for a byte pBssAddr32 cannot map */
+    unsigned char *pByte = pBssAddr32(uOwnerAddr32() + uOfs);
 
-    if (p == NULL) {    /* (not reached: all such offsets are inside known variables) */
-        bDummy = 0;
-        p = &bDummy;
+    if (pByte == NULL) {    /* (not reached: all such offsets are inside known variables) */
+        cDummy = 0;
+        pByte = &cDummy;
     }
-    return p;
+    return pByte;
 }
 
+/*
+ * Reads an iBytes-byte little-endian value at the original offset uOfs of a non-character owner
+ * (see pOwnerByte) and returns it.
+ */
 static uint32_t uOwnerRead(uint32_t uOfs, int iBytes)
 {
-    uint32_t u = 0;
+    uint32_t uValue = 0;
     int i;
 
     for (i = iBytes - 1; i >= 0; i--)
-        u = (u << 8) | *pOwnerByte(uOfs + i);
-    return u;
+        uValue = (uValue << 8) | *pOwnerByte(uOfs + i);
+    return uValue;
 }
 
-static void vOwnerWrite(uint32_t uOfs, uint32_t u, int iBytes)
+/*
+ * Writes the low iBytes bytes of uValue, little-endian, at the original offset uOfs of a
+ * non-character owner (see pOwnerByte).
+ */
+static void vOwnerWrite(uint32_t uOfs, uint32_t uValue, int iBytes)
 {
     int i;
 
-    for (i = 0; i < iBytes; i++, u >>= 8)
-        *pOwnerByte(uOfs + i) = (unsigned char)u;
+    for (i = 0; i < iBytes; i++, uValue >>= 8)
+        *pOwnerByte(uOfs + i) = (unsigned char)uValue;
 }
 
 /*
@@ -2333,11 +2350,11 @@ void vjmpReadScript(void)
        source index above 7, sets neither; the original then used whatever its register or stack slot
        held, an uninitialized read that a modern optimizer may turn into anything.  Here such a step
        reuses the previous V step's value, or a dummy variable) */
-    short shNoVar = 0;
+    short shNoVar = 0;      /* the dummy variable (see above) */
     short shValue = 0, *pVar = &shNoVar;
     short shOwnerVar = 0;   /* V: a variable of a non-character owner (see pOwnerByte) */
     int bOwnerVar = 0;      /* pVar is &shOwnerVar, for the owner's bytes at uOwnerVarOfs */
-    uint32_t uOwnerVarOfs = 0;
+    uint32_t uOwnerVarOfs = 0;  /* original offset of that variable in the owner (OWNER_OFS_shVarA + 2 * index) */
     int iOppLife;
     char szMsg[256];
 

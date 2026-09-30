@@ -252,7 +252,8 @@ def emit(res):
 """)
     table = []
     for typ, name, data in res:
-        ident = "gRc_" + c_ident(name)
+        # the array's name: g + the element's prefix (c BYTE, w WORD) + Rc_ + the resource name
+        ident = ("gcRc_" if typ in ("BITMAP", "ICON") else "gwRc_") + c_ident(name)
         if typ in ("BITMAP", "ICON"):
             path = "../rsrc/assets/" + data
             if typ == "BITMAP":
@@ -284,14 +285,16 @@ def emit(res):
             out.append("    %s,%s" % (", ".join(fmt_word(v, as_char) for v in chunk), ("  /* %s */" % comment) if comment else ""))
         out.append("};\n")
         table.append((rt, name, ident, "sizeof(%s)" % ident))
-    out.append("""typedef struct kgtEmbeddedResource {
+    out.append("""/* one entry of the resource table */
+typedef struct kgtEmbeddedResource {
     LPCSTR szType;      /* RT_BITMAP, RT_ICON (here: a whole .ico file), RT_MENU or RT_DIALOG */
     LPCSTR szName;      /* name as in the .rc (compared without case), or MAKEINTRESOURCE(id) */
-    const void *pData;
-    DWORD dwSize;
+    const void *pData;  /* the resource data, as LockResource would return it */
+    DWORD dwSize;       /* its size in bytes, as SizeofResource would return it */
 } kgtEmbeddedResource;
 
-static const kgtEmbeddedResource gEmbeddedResources[] = {""")
+/* all resources of the .rc except VERSIONINFO */
+static const kgtEmbeddedResource gkgtEmbeddedResources[] = {""")
     for rt, name, data, size in table:
         nm = "MAKEINTRESOURCEA(%s)" % name if name.isdigit() else '"%s"' % name
         out.append("    { %s, %s, %s, %s }," % (rt, nm, data, size))
@@ -302,13 +305,14 @@ static const kgtEmbeddedResource gEmbeddedResources[] = {""")
  * szName: resource name (any case) or MAKEINTRESOURCE(id); szType: RT_BITMAP, RT_ICON, RT_MENU or
  * RT_DIALOG; pdwSize: receives the size (may be NULL).
  * Returns the resource data, or NULL if there is no such resource.
+ * Globals: reads gkgtEmbeddedResources.
  */
 const void *pLockEmbeddedResource(LPCSTR szName, LPCSTR szType, DWORD *pdwSize)
 {
     int i;
 
-    for (i = 0; i < (int)(sizeof(gEmbeddedResources) / sizeof(gEmbeddedResources[0])); i++) {
-        const kgtEmbeddedResource *pRes = &gEmbeddedResources[i];
+    for (i = 0; i < (int)(sizeof(gkgtEmbeddedResources) / sizeof(gkgtEmbeddedResources[0])); i++) {
+        const kgtEmbeddedResource *pRes = &gkgtEmbeddedResources[i];
 
         if (pRes->szType != szType)
             continue;
@@ -327,37 +331,40 @@ const void *pLockEmbeddedResource(LPCSTR szName, LPCSTR szType, DWORD *pdwSize)
 
 /*
  * LoadIconA for the embedded icon: picks the image of the .ico whose size is the system's icon size
- * (else the first one) with the most colours, as LoadIcon would from the icon group.
+ * (else the first one) with the most colours, as LoadIcon would from the icon group, and creates the
+ * icon from it (resource format version 0x00030000).
  * szName: icon name.
  * Returns the icon, or NULL.
  */
 HICON hLoadEmbeddedIcon(LPCSTR szName)
 {
-    const BYTE *pIco;
-    const BYTE *pEntry;
-    const BYTE *pBest;
-    int iCount, i, cx, cy;
+    const BYTE *pIcoFile;       /* the whole .ico file */
+    const BYTE *pEntry;         /* its ICONDIRENTRY being looked at */
+    const BYTE *pBest;          /* the entry chosen so far */
+    int iImages, i, iIconWidth, iIconHeight;
 
-    pIco = pLockEmbeddedResource(szName, RT_ICON, NULL);
-    if (pIco == NULL)
+    pIcoFile = pLockEmbeddedResource(szName, RT_ICON, NULL);
+    if (pIcoFile == NULL)
         return NULL;
-    cx = GetSystemMetrics(SM_CXICON);
-    cy = GetSystemMetrics(SM_CYICON);
+    iIconWidth = GetSystemMetrics(SM_CXICON);
+    iIconHeight = GetSystemMetrics(SM_CYICON);
     /* ICONDIR: WORD reserved, WORD type (1), WORD count; ICONDIRENTRY (16 bytes): BYTE width,
        BYTE height, BYTE colours, BYTE reserved, WORD planes, WORD bits, DWORD size, DWORD offset */
-    iCount = *(const WORD *)(pIco + 4);
+    iImages = *(const WORD *)(pIcoFile + 4);
     pBest = NULL;
-    for (i = 0; i < iCount; i++) {
-        pEntry = pIco + 6 + i * 16;
+    for (i = 0; i < iImages; i++) {
+        pEntry = pIcoFile + 6 + i * 16;
+        /* the first image, replaced by one of the system size (and then by one with more bits per pixel) */
         if (pBest == NULL
-            || (pEntry[0] == cx && pEntry[1] == cy
-                && (pBest[0] != cx || pBest[1] != cy || *(const WORD *)(pEntry + 6) > *(const WORD *)(pBest + 6))))
+            || (pEntry[0] == iIconWidth && pEntry[1] == iIconHeight
+                && (pBest[0] != iIconWidth || pBest[1] != iIconHeight || *(const WORD *)(pEntry + 6) > *(const WORD *)(pBest + 6))))
             pBest = pEntry;
     }
     if (pBest == NULL)
         return NULL;
-    return CreateIconFromResourceEx((PBYTE)pIco + *(const DWORD *)(pBest + 12), *(const DWORD *)(pBest + 8),
-                                    TRUE, 0x00030000, cx, cy, LR_DEFAULTCOLOR);
+    /* the image's data (BITMAPINFOHEADER, colours, XOR and AND masks) at its offset in the file */
+    return CreateIconFromResourceEx((PBYTE)pIcoFile + *(const DWORD *)(pBest + 12), *(const DWORD *)(pBest + 8),
+                                    TRUE, 0x00030000, iIconWidth, iIconHeight, LR_DEFAULTCOLOR);
 }
 
 /*

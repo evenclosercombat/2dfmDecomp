@@ -20,10 +20,11 @@
  *     colour transitions, and the per-object draw routine vDrawCurrentEngineObject (layers, after-image
  *     trails, flashes).
  *
- * Four functions here (vjmpHandleBattleInterface, vBlitImageRect16, vDrawKgtImage16,
+ * VC6 history: four functions here (vjmpHandleBattleInterface, vBlitImageRect16, vDrawKgtImage16,
  * vDrawCurrentEngineObject) do not compile to the original bytes with VC6 yet; the main branch
  * builds them from the original's machine code (see docs/MATCHING.md, "Functions that do not match
- * yet"), this branch from the C below.
+ * yet").  This branch compiles all of them from the C below; their headers still note what differs
+ * under VC6.
  */
 #include "kgt.h"
 
@@ -2349,9 +2350,8 @@ test_play:
  * Globals changed: gkgtGameState.dwTargetPlayerTimer / iTargetPlayer, gkgtLoadedCharacter[].iLifeMax /
  * iSpecialMax (0 -> 1), gkgtEngineObjects.
  *
- * Not byte-identical: VC6 compiles this C to slightly different register and stack-slot choices.
- * The `main` branch builds this function from the original's machine code instead.
- * Still different: 2304 vs 2336 bytes. The face-picture calls pass iX/iY locals (the original evaluates x before
+ * VC6 history: with VC6 this C does not compile to the original bytes (the main branch builds this
+ * function from the original's machine code; this branch compiles the C).  What still differs: 2304 vs 2336 bytes. The face-picture calls pass iX/iY locals (the original evaluates x before
  * y).  Left: the constant-1 register (orig edi, ours ebp) - which then leaves the original a free ebp for
  * a constant-0 register in the VS case (cmp eax,ebp / mov [..],ebp), so that case's 2P stock block is
  * not cross-jumped into the story one as ours is (-> the goto set_script); wIdx is kept in di by the
@@ -3127,9 +3127,8 @@ void vjmpScreenControl(void)
  * middle and iTintB the top channel of the pixel), 5 opaque copy.
  * Globals read: gpFrameBits, giScreenMode.  Globals changed: the frame buffer, gwTintedPalette16.
  *
- * Not byte-identical: VC6 compiles this C to slightly different register and stack-slot choices.
- * The `main` branch builds this function from the original's machine code instead.
- * Still different: (case 4's else arm and the iInvG/iInvB stack slots, a few register choices in case 2).  Older
+ * VC6 history: with VC6 this C does not compile to the original bytes (the main branch builds this
+ * function from the original's machine code; this branch compiles the C).  What still differs: (case 4's else arm and the iInvG/iInvB stack slots, a few register choices in case 2).  Older
  * note: same structure/case layout, but register allocation differs from the start: the original keeps
  * pImage/iX/iRectW/pPalette/iRectH in esi/edx/ecx/ebp/ebx and spills iColors at once (we keep iColors in
  * eax), which shifts every case body.
@@ -3619,9 +3618,8 @@ void vJumptableJump(void)
  * iColorAlpha (0..32, the destination weight).
  * Globals read: gpkgtCurrentEngineObject, gpFrameBits, giScreenMode.  Globals changed: the frame buffer.
  *
- * Not byte-identical: VC6 compiles this C to slightly different register and stack-slot choices.
- * The `main` branch builds this function from the original's machine code instead.
- * Still different: (mostly case 4: the order of the G/B/R terms and the spilling of iAlpha, plus small register
+ * VC6 history: with VC6 this C does not compile to the original bytes (the main branch builds this
+ * function from the original's machine code; this branch compiles the C).  What still differs: (mostly case 4: the order of the G/B/R terms and the spilling of iAlpha, plus small register
  * choices in cases 0, 1 and 3).  Older note: same block layout/jump table, but register allocation
  * differs throughout (original keeps the step/row-skip in memory and dst in eax, the counters in dead
  * parameter slots; ours enregisters the step in ebx) - 1760 vs 1824 bytes. Tried shared/per-case
@@ -4068,15 +4066,14 @@ void vApplyObjectColorTransition(int *pFx)
  * a window; KGT palettes are RGBQUAD-like dwords (B, G, R, x), so GetBValue() reads the red byte and
  * GetRValue() the blue one; entries 0 (transparent) stay 0 and a tinted black becomes 1 so it is not
  * transparent.
- * Globals read: gkgtKgtSystem, gkgtLoadedDemo, gkgtLoadedStage, gkgtLoadedCharacter, gAfterImageLayers,
+ * Globals read: gkgtKgtSystem, gkgtLoadedDemo, gkgtLoadedStage, gkgtLoadedCharacter, gAfterImageTrails,
  * gkgtBitmaps, gkgtEngineObjects, gkgtGameState, giCameraX/Y, giShakeX/YOffset, giHitJudge,
  * giScreenMode, giReverseShakeDirection, giSystemFlashType, giStageFlashType, guHitboxColors.
  * Globals changed: the frame buffer gpFrameBits, gwTintedPalette16, gpGlobalMemoryAlloc (decompressed
  * images), the current object's colour (colour effect; restored after the after-image frames).
  *
- * Not byte-identical: VC6 compiles this C to slightly different register and stack-slot choices.
- * The `main` branch builds this function from the original's machine code instead.
- * Still different: (the iObjectType/pChar register swap, the pChar/pStep stack slots, the layer reload order, the
+ * VC6 history: with VC6 this C does not compile to the original bytes (the main branch builds this
+ * function from the original's machine code; this branch compiles the C).  What still differs: (the iObjectType/pChar register swap, the pChar/pStep stack slots, the layer reload order, the
  * held flip arm and the blur preheader).  Older note: code shape (block order, switch tables, tail
  * merges) matches, but register and stack slot allocation differ (frame 0x70 instead of 0x6c). The
  * original keeps cAfterImageIdx * 0x650 as a separate term in the layer addressing

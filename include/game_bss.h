@@ -17,8 +17,10 @@
  * BSS(T, name) is the lvalue of type T at gBss + BSS_OFS_name.  As with the extern declarations of
  * the main branch, the type is the one the file uses (giHitJudge is int[2] in battle.c and int
  * elsewhere, gcKeyboardControlsSets a KEY_LAYOUT[2], a KEYCONFIG or a BYTE[2][17], ...).  The
- * kgtBss members (m_name) are only storage (byte arrays); src/game_bss.c defines gBss and checks the
- * offsets.  Building needs -fno-strict-aliasing (the bytes are accessed with other types).
+ * kgtBss members are only storage (byte arrays), each named m_ + the name of its variable (m_g_XXXXXX
+ * for the unreferenced space of the original, m__XXXXXX for filler), so that BSS_OFS_name and the
+ * checks in src/game_bss.c can be generated from the name; src/game_bss.c defines gBss and checks
+ * the offsets.  Building needs -fno-strict-aliasing (the bytes are accessed with other types).
  *
  * 64-bit port: the members that hold pointers (handles, object pointers, and the structures with
  * pointer members) take their size from the real types (BSS_PTR, sizeof) and are pointer-aligned
@@ -451,7 +453,7 @@ unsigned char *pBssAddr32(uint32_t uAddr32);
 #define BSS_OFS_giLastInputCleaned               offsetof(kgtBss, m_giLastInputCleaned)
 #define BSS_OFS_giLastInputXor                   offsetof(kgtBss, m_giLastInputXor)
 #define BSS_OFS_gAfterImageTrails                offsetof(kgtBss, m_gAfterImageTrails)
-#define BSS_OFS_gAfterImageLayers                (BSS_OFS_gAfterImageTrails + 0x0)   /* gAfterImageTrails + 0x0, 161600 bytes */
+#define BSS_OFS_gAfterImageLayers                (BSS_OFS_gAfterImageTrails + 0x0)   /* gAfterImageTrails + 0x0, 161600 bytes (engine.c's former view of the trails; unused) */
 #define BSS_OFS_gAfterImageTrailsBase            (BSS_OFS_gAfterImageTrails - sizeof(unk_0x650_struct))   /* gAfterImageTrails - one element (in the original gkgtLoadedStage + 0x21f0) */
 #define BSS_OFS_gkgtDebugLog                     offsetof(kgtBss, m_gkgtDebugLog)
 #define BSS_OFS_gDDSurfaceDesc                   offsetof(kgtBss, m_gDDSurfaceDesc)
@@ -474,7 +476,7 @@ unsigned char *pBssAddr32(uint32_t uAddr32);
 #define BSS_OFS_gpsLpAppName                     offsetof(kgtBss, m_gpsLpAppName)
 #define BSS_OFS_giRepeatInput                    offsetof(kgtBss, m_giRepeatInput)
 
-/* the variable `name` seen as an lvalue of type T */
+/* the variable `name` seen as an lvalue of type T (T as in a declaration: int, char[256], kgtEngineObject *[32], ...) */
 #define BSS(T, name) (*(__typeof__(T) *)((unsigned char *)&gBss + BSS_OFS_##name))
 
 #endif

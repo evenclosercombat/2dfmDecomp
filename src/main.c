@@ -29,23 +29,24 @@ int giPixelFormat565[6] = { 16, 16, 16, 5, 4, 3 };  /* 0x41e7e4: {16, 16, 16, 5,
 /* ------------------------------------------------------------------------------------------ */
 
 /*
- * Clears iSize bytes at pAddress, one byte at a time (the game's memset(p, 0, n)).
+ * Clears uSize bytes at pAddress, one byte at a time (the game's memset(p, 0, n)).
  * A size of 0 is treated as a programming error: it only shows a warning box.
- * Parameters: pAddress - memory to clear; iSize - number of bytes (> 0).
+ * Parameters: pAddress - memory to clear; uSize - number of bytes (> 0; a size_t here, an int in the
+ * original).
  * Globals: none.
  */
-void vMemzero(void *pAddress, size_t iSize)
+void vMemzero(void *pAddress, size_t uSize)
 {
     char *pByte;
 
     /* a zero size is reported ("memzero : size zero, you fool") and nothing is done */
-    if (iSize == 0) {
+    if (uSize == 0) {
         vSpawnTaskModalWithWarning("memzero : \221\345\202\253\202\263\202O\202\276\202\274\202\261\202\347");  /* memzero : 大きさ０だぞこら */
         return;
     }
     pByte = (char *)pAddress;
     /* matching: this loop form gives the original's plain byte loop (no rep stos) */
-    while (iSize--)
+    while (uSize--)
         *pByte++ = 0;
 }
 
@@ -238,12 +239,13 @@ void vFreeKgtCore(kgt_core *pCore)
  *   char[256]   name (game title / character / demo / stage name)
  *   int n       skills (0-1024), then n kgtSkillHeader (0x27 bytes each)
  *   int n       script steps (0-0x10000), then n kgtSkill (16 bytes each)
- *   int n       images (0-0x2000), then per image a kgtImageHeader (0x14 bytes; its pAlloc field is
- *               meaningless in the file) followed by its data: iSize bytes when iSize is not 0, else
+ *   int n       images (0-0x2000), then per image a kgtImageHeaderFile (the file layout of
+ *               kgtImageHeader, 0x14 bytes; its pointer slot is meaningless in the file) followed by its data: iSize bytes when iSize is not 0, else
  *               iWidth * iHeight bytes, plus 0x400 when iFlags bit 0 is set (the image's own palette,
  *               256 x 4 bytes, stored before the pixels)
  *   0x2100      palettes: 8 x 0x108 colours of 4 bytes (B, G, R, 1)
- *   int n       sounds (0-256), then per sound a kgtSound (0x2a bytes) followed by iSize bytes of data
+ *   int n       sounds (0-256), then per sound a kgtSoundFile (the file layout of kgtSound, 0x2a bytes)
+ *               followed by iSize bytes of data
  *   DWORD       end of the block (read and dropped)
  * With DirectSound, wave sounds (kind 1) become wave objects at once (kgtwBuildWav), are entered in
  * gpWavs[pCore->iWavBank] and their file data is freed.
@@ -251,8 +253,8 @@ void vFreeKgtCore(kgt_core *pCore)
  * 2 when a sound's buffer could not be allocated.  On an error what was read so far stays allocated
  * (bLoaded is still 0, so vFreeKgtCore does not free it).
  * Globals: reads giDsoundInitializedFlag, gpDirectSound; changes gpWavs.
- * Not byte-identical: VC6 compiles this C to slightly different register and stack-slot choices.
- * The `main` branch builds this function from the original's machine code instead.
+ * VC6 history: VC6 compiles this C to slightly different register and stack-slot choices, so the
+ * main branch builds this function from the original's machine code; this branch compiles the C.
  */
 int bReadKgtCore(kgt_core *pCore, HANDLE hFile)
 {
@@ -260,7 +262,7 @@ int bReadKgtCore(kgt_core *pCore, HANDLE hFile)
     int iCount;
     int i;
     DWORD dwSize;
-    void *pTable;       /* TODO(match): stack slot order differs from the original */
+    void *pTable;       /* the table being read (skills, steps, images, sounds); (VC6 history: its stack slot differs from the original's) */
     kgtImageHeader *pImage;
 
     kgtSound *pSound;
@@ -308,13 +310,13 @@ int bReadKgtCore(kgt_core *pCore, HANDLE hFile)
         /* the file record (0x14 bytes) and the loaded header differ in the pointer's size: read the
            record, then copy its fields (pAlloc is set below) */
         {
-            kgtImageHeaderFile record;
-            if (!ReadFile(hFile, &record, sizeof(record), &dwBytesRead, NULL))
+            kgtImageHeaderFile kgtImageRecord;     /* the header as stored in the file */
+            if (!ReadFile(hFile, &kgtImageRecord, sizeof(kgtImageRecord), &dwBytesRead, NULL))
                 return 1;
-            pImage->iWidth = record.iWidth;
-            pImage->iHeight = record.iHeight;
-            pImage->iFlags = record.iFlags;
-            pImage->iSize = record.iSize;
+            pImage->iWidth = kgtImageRecord.iWidth;
+            pImage->iHeight = kgtImageRecord.iHeight;
+            pImage->iFlags = kgtImageRecord.iFlags;
+            pImage->iSize = kgtImageRecord.iSize;
         }
         /* data size: width * height, + 0x400 for an own palette (256 x 4 bytes); a non-zero iSize (the
            stored size) replaces it.  matching: width and flags are read through pointers so that their
@@ -353,15 +355,15 @@ int bReadKgtCore(kgt_core *pCore, HANDLE hFile)
         /* the file record (0x2a bytes), converted to the loaded layout; like the original, pAlloc keeps
            the value of the file's slot when there is no data (it is only freed when not 0) */
         {
-            kgtSoundFile record;
-            if (!ReadFile(hFile, &record, sizeof(record), &dwBytesRead, NULL))
+            kgtSoundFile kgtSoundRecord;           /* the header as stored in the file */
+            if (!ReadFile(hFile, &kgtSoundRecord, sizeof(kgtSoundRecord), &dwBytesRead, NULL))
                 return 1;
-            pSound->pAlloc = (void *)(uintptr_t)record.dwAlloc;
-            memcpy(pSound->szName, record.szName, sizeof(pSound->szName));
+            pSound->pAlloc = (void *)(uintptr_t)kgtSoundRecord.dwAlloc;
+            memcpy(pSound->szName, kgtSoundRecord.szName, sizeof(pSound->szName));
             pSound->pWav = NULL;    /* clears the whole slot; iSize then fills its low 4 bytes */
-            pSound->iSize = record.iSize;
-            pSound->cFlags = record.cFlags;
-            pSound->cCdTrack = record.cCdTrack;
+            pSound->iSize = kgtSoundRecord.dwSize;
+            pSound->cFlags = kgtSoundRecord.cFlags;
+            pSound->cCdTrack = kgtSoundRecord.cCdTrack;
         }
         dwSize = pSound->iSize;
         if (dwSize) {
@@ -777,7 +779,7 @@ extern char gszCdDrive[];                          /* 0x41e408: "X:" drive of th
 #define giTimeAdjustmentFlag BSS(int, giTimeAdjustmentFlag)  /* 0x424700: 1 while the frame time of the current tick has been measured */
 #define giScreenMode BSS(int, giScreenMode)        /* 0x424704: display mode in use: 0 window (RGB555 DIB), 1 full screen (RGB565 surface) */
 #define giHitJudge BSS(int, giHitJudge)            /* 0x42470c: hit-judge display (hit boxes and player state), copy of giConfigTestplayHitjudge; the next int (0x424710) enables the line switch button */
-#define giForceRoundEnd BSS(int, giForceRoundEnd)  /* 0x424718: set to end the round at once (debug key); engine.c reads it as (&gbStoryMode)[1] */
+#define giForceRoundEnd BSS(int, giForceRoundEnd)  /* 0x424718: set to end the round at once (debug key); the original's engine code reads it as (&gbStoryMode)[1] */
 #define gbShowDebugStatus BSS(int, gbShowDebugStatus)  /* 0x42471c: draw gDebugStatus at the bottom of the screen; never set by the code */
 #define guCdAudioDeviceId BSS(MCIDEVICEID, guCdAudioDeviceId)  /* 0x424720: MCI device of the CD audio */
 #define gbCdAudioOpen BSS(int, gbCdAudioOpen)      /* 0x424724: the CD audio device is open */

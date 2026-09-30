@@ -1,6 +1,6 @@
 /*
  * blit.c - the hand-written 8-bit (palette index) blitters, 0x401000-0x402470 in the original: the
- * first object of the link, written in assembler (formerly asm/blit.asm), translated to C with the
+ * first object of the link, written in assembler (asm/blit.asm on the main branch), translated to C with the
  * same behaviour, quirks included (each is marked "NB").  None of them is referenced by the game's
  * C code except copy_ppvBits_to_lpSurface (main.c: the 8-bit frame to the locked DirectDraw
  * surface); the game draws its images into 16-bit surfaces with its own routines (engine.c).  The
@@ -31,47 +31,51 @@
 #include "blit.h"
 
 /* ---- the blitters' uninitialized data (0x4203b0-0x4213c3, the start of the original's .bss;
- * file-local, as in the assembler object) ---- */
-static int32_t col_offsets[512];            /* 0x4203b0: affine blits: source offset differences between neighbouring columns */
-static const unsigned char *row_ptrs[512];  /* 0x420bb0: affine blits: source pointer of each destination row */
-static uint32_t count_x;                    /* 0x4213b0: column / group counter */
+ * file-local, as in the assembler object; the comments give the assembler's labels) ---- */
+static int32_t giColOffsets[512];            /* 0x4203b0 col_offsets: affine blits: source offset differences between neighbouring columns */
+static const unsigned char *gpRowPtrs[512];  /* 0x420bb0 row_ptrs: affine blits: source pointer of each destination row */
+static uint32_t guCountX;                    /* 0x4213b0 count_x: column / group counter */
 /* 0x4213b4 tmp_4213b4: a dword that nothing references (left out) */
-static uint32_t count_y;                   /* 0x4213b8: row counter */
-[[maybe_unused]] static uint32_t width_px;  /* 0x4213bc: destination width (written, never read) */
-static uint32_t base_offset;                /* 0x4213c0: source offset of the first destination pixel */
+static uint32_t guCountY;                    /* 0x4213b8 count_y: row counter */
+[[maybe_unused]] static uint32_t guWidthPx;  /* 0x4213bc width_px: destination width (written, never read) */
+static uint32_t guBaseOffset;                /* 0x4213c0 base_offset: source offset of the first destination pixel */
 /* ---- */
 
-/* pointer + a 32-bit value taken modulo 2^32 (the original's add of a register to a pointer) */
-#define PTR_ADD(p, n) ((p) + (int32_t)(uint32_t)(n))
+/* pointer + a 32-bit value taken modulo 2^32 (the original's add of a register to a pointer): the
+   value is reduced to 32 bits and added as a signed offset */
+#define PTR_ADD(pBase, uOffset32) ((pBase) + (int32_t)(uint32_t)(uOffset32))
 
-/* unaligned 16/32-bit accesses */
-static uint32_t uRead32(const unsigned char *p)
+/*
+ * Unaligned 16/32-bit accesses (the x86 original reads and writes words and dwords at any address).
+ * uRead32 / uRead16: return the little-endian value at pBytes; vWrite32 / vWrite16: store uValue there.
+ */
+static uint32_t uRead32(const unsigned char *pBytes)
 {
-    uint32_t u;
+    uint32_t uValue;
 
-    memcpy(&u, p, 4);
-    return u;
+    memcpy(&uValue, pBytes, 4);
+    return uValue;
 }
 
-static void vWrite32(unsigned char *p, uint32_t u)
+static void vWrite32(unsigned char *pBytes, uint32_t uValue)
 {
-    memcpy(p, &u, 4);
+    memcpy(pBytes, &uValue, 4);
 }
 
-static uint16_t uRead16(const void *p)
+static uint16_t uRead16(const void *pBytes)
 {
-    uint16_t u;
+    uint16_t uValue;
 
-    memcpy(&u, p, 2);
-    return u;
+    memcpy(&uValue, pBytes, 2);
+    return uValue;
 }
 
-static void vWrite16(unsigned char *p, uint16_t u)
+static void vWrite16(unsigned char *pBytes, uint16_t uValue)
 {
-    memcpy(p, &u, 2);
+    memcpy(pBytes, &uValue, 2);
 }
 
-/* a byte in all four bytes of a dword */
+/* returns the low byte of iColour repeated in all four bytes of a dword (a fill pattern) */
 static uint32_t uByte4(int iColour)
 {
     return (uint32_t)(unsigned char)iColour * 0x01010101u;
@@ -90,9 +94,9 @@ static uint32_t uByte4(int iColour)
 void Blit8to16_ColorKey(unsigned short *pDst, const unsigned char *pSrc, int iPairs, int iRows,
                         int iDstPitch, int iSrcPitch, const unsigned short *pPalette, int iKey)
 {
-    unsigned char *pbDst = (unsigned char *)pDst;
-    const unsigned char *pbPal = (const unsigned char *)pPalette;
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char *pDstBytes = (unsigned char *)pDst;
+    const unsigned char *pPalBytes = (const unsigned char *)pPalette;
+    unsigned char cKey = (unsigned char)iKey;
     int32_t iDstSkip = (int32_t)(((uint32_t)iDstPitch - (uint32_t)iPairs) << 1);
     int32_t iSrcSkip = (int32_t)((uint32_t)iSrcPitch - (uint32_t)iPairs);
     uint32_t uRows = (uint32_t)iRows;
@@ -101,15 +105,15 @@ void Blit8to16_ColorKey(unsigned short *pDst, const unsigned char *pSrc, int iPa
         uint32_t uPairs = (uint32_t)iPairs;
 
         do {
-            if (pSrc[0] != bKey)
-                vWrite16(pbDst, uRead16(pbPal + pSrc[0] * 2));
-            if (pSrc[1] != bKey)
-                vWrite16(pbDst + 2, uRead16(pbPal + pSrc[1] * 2));
-            pbDst += 4;
+            if (pSrc[0] != cKey)
+                vWrite16(pDstBytes, uRead16(pPalBytes + pSrc[0] * 2));
+            if (pSrc[1] != cKey)
+                vWrite16(pDstBytes + 2, uRead16(pPalBytes + pSrc[1] * 2));
+            pDstBytes += 4;
             pSrc += 2;
         } while (--uPairs != 0);
         pSrc += iSrcSkip;
-        pbDst += iDstSkip;
+        pDstBytes += iDstSkip;
     } while (--uRows != 0);
 }
 
@@ -124,9 +128,9 @@ void Blit8to16_ColorKey(unsigned short *pDst, const unsigned char *pSrc, int iPa
 void Blit8to16_ColorKey_Unrolled(unsigned short *pDst, const unsigned char *pSrc, int iWidth, int iRows,
                                  int iDstPitch, int iSrcPitch, const unsigned short *pPalette, int iKey)
 {
-    unsigned char *pbDst = (unsigned char *)pDst;
-    const unsigned char *pbPal = (const unsigned char *)pPalette;
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char *pDstBytes = (unsigned char *)pDst;
+    const unsigned char *pPalBytes = (const unsigned char *)pPalette;
+    unsigned char cKey = (unsigned char)iKey;
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);   /* in pixels */
     int32_t iSrcSkip = (int32_t)((uint32_t)iSrcPitch - (uint32_t)iWidth);
     uint32_t uRows = (uint32_t)iRows;
@@ -137,15 +141,15 @@ void Blit8to16_ColorKey_Unrolled(unsigned short *pDst, const unsigned char *pSrc
 
         for (; uGroups != 0; uGroups--) {
             for (i = 0; i < 4; i++)
-                if (pSrc[i] != bKey)
-                    vWrite16(pbDst + i * 2, uRead16(pbPal + pSrc[i] * 2));
-            pbDst += 8;
+                if (pSrc[i] != cKey)
+                    vWrite16(pDstBytes + i * 2, uRead16(pPalBytes + pSrc[i] * 2));
+            pDstBytes += 8;
             pSrc += 4;
         }
         /* NB (iWidth & 3) leftover pixels: skipped without stepping over them */
         pSrc += iSrcSkip;
-        pbDst += iDstSkip;          /* added twice: pixels -> bytes */
-        pbDst += iDstSkip;
+        pDstBytes += iDstSkip;          /* added twice: pixels -> bytes */
+        pDstBytes += iDstSkip;
     } while (--uRows != 0);
 }
 
@@ -162,14 +166,14 @@ void FillRect8(unsigned char *pDst, int iWidth, int iHeight, int iPitch, int iCo
     uint32_t uBytes = (uint32_t)iWidth & 3;
     int32_t iSkip = (int32_t)((uint32_t)iPitch - (uint32_t)iWidth);
     uint32_t uRows = (uint32_t)iHeight;
-    uint32_t u;
+    uint32_t uLeft;
 
     do {
-        for (u = uDwords; u != 0; u--) {
+        for (uLeft = uDwords; uLeft != 0; uLeft--) {
             vWrite32(pDst, uFill);
             pDst += 4;
         }
-        for (u = uBytes; u != 0; u--)
+        for (uLeft = uBytes; uLeft != 0; uLeft--)
             *pDst++ = (unsigned char)iColour;
         pDst += iSkip;
     } while (--uRows != 0);
@@ -185,25 +189,25 @@ void FillRect8(unsigned char *pDst, int iWidth, int iHeight, int iPitch, int iCo
  */
 void copy_ppvBits_to_lpSurface(void *pDst, void *pSrc, int iWidth, int iRows, int iDstPitch, int iSrcPitch)
 {
-    unsigned char *pbDst = (unsigned char *)pDst;
-    const unsigned char *pbSrc = (const unsigned char *)pSrc;
+    unsigned char *pDstBytes = (unsigned char *)pDst;
+    const unsigned char *pSrcBytes = (const unsigned char *)pSrc;
     uint32_t uDwords = (uint32_t)iWidth >> 2;
     uint32_t uBytes = (uint32_t)iWidth & 3;
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
     int32_t iSrcSkip = (int32_t)((uint32_t)iSrcPitch - (uint32_t)iWidth);
     uint32_t uRows = (uint32_t)iRows;
-    uint32_t u;
+    uint32_t uLeft;
 
     do {
-        for (u = uDwords; u != 0; u--) {
-            vWrite32(pbDst, uRead32(pbSrc));
-            pbDst += 4;
-            pbSrc += 4;
+        for (uLeft = uDwords; uLeft != 0; uLeft--) {
+            vWrite32(pDstBytes, uRead32(pSrcBytes));
+            pDstBytes += 4;
+            pSrcBytes += 4;
         }
-        for (u = uBytes; u != 0; u--)
-            *pbDst++ = *pbSrc++;
-        pbSrc += iSrcSkip;
-        pbDst += iDstSkip;
+        for (uLeft = uBytes; uLeft != 0; uLeft--)
+            *pDstBytes++ = *pSrcBytes++;
+        pSrcBytes += iSrcSkip;
+        pDstBytes += iDstSkip;
     } while (--uRows != 0);
 }
 
@@ -228,32 +232,36 @@ void PutPixel8(unsigned char *pPixel, int iColour)
  * An affine blit draws a rotated / scaled image: destination pixel (i, j) (column i, row j) shows
  * the source pixel at (u, v) = (u0 + j * duRow + i * duCol, v0 + j * dvRow + i * dvCol), in 24.8 fixed
  * point, i.e. at the source offset (v >> 8) * srcPitch + (u >> 8).  The source offset of every
- * column relative to column 0 is computed once (col_offsets holds the differences between
- * neighbouring columns) and every row starts from its own source pointer (row_ptrs), so all rows
+ * column relative to column 0 is computed once (giColOffsets holds the differences between
+ * neighbouring columns) and every row starts from its own source pointer (gpRowPtrs), so all rows
  * walk the same column pattern:
- *   pixel (i, j) = row_ptrs[j] + col_offsets[0] + ... + col_offsets[i].
+ *   pixel (i, j) = gpRowPtrs[j] + giColOffsets[0] + ... + giColOffsets[i].
  * The width and height must be 1..512 (the tables; the original overran them otherwise).  All sums
  * are modulo 2^32 and the source is not bounds-checked (except the leftover columns of
  * AffineBlit8_ColorKey_Signed).
  */
 
-/* the 24.8 -> integer shifts: unsigned (u >> 8) and signed (magnitude shifted: rounds towards 0) */
-static uint32_t uShr8(uint32_t u)
+/*
+ * The 24.8 fixed point -> integer shifts of the affine blits: uShr8 shifts uFixed as unsigned (u >> 8);
+ * uShr8Signed treats it as signed and shifts the magnitude (rounds towards 0).  Both return the
+ * integer part.
+ */
+static uint32_t uShr8(uint32_t uFixed)
 {
-    return u >> 8;
+    return uFixed >> 8;
 }
 
-static uint32_t uShr8Signed(uint32_t u)
+static uint32_t uShr8Signed(uint32_t uFixed)
 {
-    if (u >= 0x80000000u)
-        return 0u - ((0u - u) >> 8);    /* neg, shr 8, neg */
-    return u >> 8;
+    if (uFixed >= 0x80000000u)
+        return 0u - ((0u - uFixed) >> 8);    /* neg, shr 8, neg */
+    return uFixed >> 8;
 }
 
 /*
- * Builds col_offsets, row_ptrs and base_offset for the affine blits (the setup shared by all five,
- * which differ only in the shift).  Globals: changes width_px, base_offset, count_x (ends 0),
- * col_offsets[0..iWidth-1], row_ptrs[0..iHeight-1].
+ * Builds giColOffsets, gpRowPtrs and guBaseOffset for the affine blits (the setup shared by all five,
+ * which differ only in the shift).  Globals: changes guWidthPx, guBaseOffset, guCountX (ends 0),
+ * giColOffsets[0..iWidth-1], gpRowPtrs[0..iHeight-1].
  * The row offset is (v >> 8) * srcPitch: the original multiplies with mul in the first two
  * routines and imul in the other three, which give the same low 32 bits.
  */
@@ -262,36 +270,36 @@ static void vAffineSetup(const unsigned char *pSrc, int iWidth, int iHeight, int
                          uint32_t (*pfnShr8)(uint32_t))
 {
     uint32_t uPitch = (uint32_t)iSrcPitch;
-    uint32_t u, v, uOffset, uPrev, uRows;
-    int32_t *pOut;
+    uint32_t uSrcU, uSrcV, uOffset, uPrev, uRows;
+    int32_t *pColOffset;
     const unsigned char **ppRow;
 
-    width_px = (uint32_t)iWidth;
-    base_offset = pfnShr8((uint32_t)iV0) * uPitch + pfnShr8((uint32_t)iU0);
+    guWidthPx = (uint32_t)iWidth;
+    guBaseOffset = pfnShr8((uint32_t)iV0) * uPitch + pfnShr8((uint32_t)iU0);
 
-    /* col_offsets[i] = offset(column i) - offset(column i - 1), offsets relative to base_offset */
-    count_x = (uint32_t)iWidth;
-    u = (uint32_t)iU0;
-    v = (uint32_t)iV0;
-    pOut = col_offsets;
+    /* giColOffsets[i] = offset(column i) - offset(column i - 1), offsets relative to guBaseOffset */
+    guCountX = (uint32_t)iWidth;
+    uSrcU = (uint32_t)iU0;
+    uSrcV = (uint32_t)iV0;
+    pColOffset = giColOffsets;
     uPrev = 0;
     do {
-        uOffset = pfnShr8(v) * uPitch + pfnShr8(u) - base_offset;
-        *pOut++ = (int32_t)(uOffset - uPrev);
+        uOffset = pfnShr8(uSrcV) * uPitch + pfnShr8(uSrcU) - guBaseOffset;
+        *pColOffset++ = (int32_t)(uOffset - uPrev);
         uPrev = uOffset;
-        u += (uint32_t)iDuCol;
-        v += (uint32_t)iDvCol;
-    } while (--count_x != 0);
+        uSrcU += (uint32_t)iDuCol;
+        uSrcV += (uint32_t)iDvCol;
+    } while (--guCountX != 0);
 
-    /* row_ptrs[j] = src + (v >> 8) * srcPitch + (u >> 8), stepping (u, v) by the row steps */
+    /* gpRowPtrs[j] = src + (uSrcV >> 8) * srcPitch + (uSrcU >> 8), stepping (uSrcU, uSrcV) by the row steps */
     uRows = (uint32_t)iHeight;
-    u = (uint32_t)iU0;
-    v = (uint32_t)iV0;
-    ppRow = row_ptrs;
+    uSrcU = (uint32_t)iU0;
+    uSrcV = (uint32_t)iV0;
+    ppRow = gpRowPtrs;
     do {
-        *ppRow++ = PTR_ADD(pSrc, pfnShr8(v) * uPitch + pfnShr8(u));
-        u += (uint32_t)iDuRow;
-        v += (uint32_t)iDvRow;
+        *ppRow++ = PTR_ADD(pSrc, pfnShr8(uSrcV) * uPitch + pfnShr8(uSrcU));
+        uSrcU += (uint32_t)iDuRow;
+        uSrcV += (uint32_t)iDvRow;
     } while (--uRows != 0);
 }
 
@@ -303,35 +311,35 @@ static void vAffineSetup(const unsigned char *pSrc, int iWidth, int iHeight, int
  * destination pixel (24.8); iDuRow, iDvRow: source step per destination row; iDuCol, iDvCol: source
  * step per destination column.
  * Coordinates are truncated with unsigned shifts (u >> 8).
- * Globals: changes col_offsets, row_ptrs, count_x, count_y (both end 0), width_px, base_offset.
+ * Globals: changes giColOffsets, gpRowPtrs, guCountX, guCountY (both end 0), guWidthPx, guBaseOffset.
  */
 void AffineBlit8_ColorKey(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int iHeight,
                           int iDstPitch, int iSrcPitch, int iKey, int iU0, int iV0,
                           int iDuRow, int iDvRow, int iDuCol, int iDvCol)
 {
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char cKey = (unsigned char)iKey;
     int32_t iDstSkip;
     const unsigned char **ppRow;
 
     vAffineSetup(pSrc, iWidth, iHeight, iSrcPitch, iU0, iV0, iDuRow, iDvRow, iDuCol, iDvCol, uShr8);
 
     iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
-    count_y = (uint32_t)iHeight;
-    ppRow = row_ptrs;
+    guCountY = (uint32_t)iHeight;
+    ppRow = gpRowPtrs;
     do {
         const unsigned char *pPixel = *ppRow;
-        const int32_t *pCol = col_offsets;
+        const int32_t *pCol = giColOffsets;
         uint32_t uCols = (uint32_t)iWidth;
 
         do {
             pPixel += *pCol++;
-            if (*pPixel != bKey)
+            if (*pPixel != cKey)
                 *pDst = *pPixel;
             pDst++;
         } while (--uCols != 0);
         pDst += iDstSkip;
         ppRow++;
-    } while (--count_y != 0);
+    } while (--guCountY != 0);
 }
 
 /*
@@ -352,25 +360,25 @@ void AffineBlit8_ColorKey_Signed(unsigned char *pDst, const unsigned char *pSrc,
                                  int iWidth, int iHeight, int iDstPitch, int iSrcPitch, int iKey,
                                  int iU0, int iV0, int iDuRow, int iDvRow, int iDuCol, int iDvCol)
 {
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char cKey = (unsigned char)iKey;
     int32_t iDstSkip;
     const unsigned char **ppRow;
 
     vAffineSetup(pSrc, iWidth, iHeight, iSrcPitch, iU0, iV0, iDuRow, iDvRow, iDuCol, iDvCol, uShr8Signed);
 
     iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
-    count_y = (uint32_t)iHeight;
-    ppRow = row_ptrs;
+    guCountY = (uint32_t)iHeight;
+    ppRow = gpRowPtrs;
     do {
         const unsigned char *pPixel = *ppRow;
-        const int32_t *pCol = col_offsets;
+        const int32_t *pCol = giColOffsets;
         uint32_t uGroups = (uint32_t)iWidth >> 2;
         uint32_t uCols;
 
         /* groups of 4 columns: not checked */
         for (uCols = uGroups * 4; uCols != 0; uCols--) {
             pPixel += *pCol++;
-            if (*pPixel != bKey)
+            if (*pPixel != cKey)
                 *pDst = *pPixel;
             pDst++;
         }
@@ -378,46 +386,46 @@ void AffineBlit8_ColorKey_Signed(unsigned char *pDst, const unsigned char *pSrc,
         for (uCols = (uint32_t)iWidth & 3; uCols != 0; uCols--) {
             pPixel += *pCol++;
             if ((uintptr_t)pPixel >= (uintptr_t)pSrc && (uintptr_t)pPixel < (uintptr_t)pSrcEnd
-                && *pPixel != bKey)
+                && *pPixel != cKey)
                 *pDst = *pPixel;
             pDst++;
         }
         pDst += iDstSkip;
         ppRow++;
-    } while (--count_y != 0);
+    } while (--guCountY != 0);
 }
 
 /*
  * AffineBlit8_Blend (0x40155B): AffineBlit8_ColorKey drawing translucently through a blend table.
  * pDst ... iDvCol: as AffineBlit8_ColorKey; pBlend: 64 KB table, dst = blend[dst * 256 + src].
- * Globals: as AffineBlit8_ColorKey (count_x is also the column counter while drawing).
+ * Globals: as AffineBlit8_ColorKey (guCountX is also the column counter while drawing).
  */
 void AffineBlit8_Blend(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int iHeight,
                        int iDstPitch, int iSrcPitch, int iKey, int iU0, int iV0,
                        int iDuRow, int iDvRow, int iDuCol, int iDvCol, const unsigned char *pBlend)
 {
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char cKey = (unsigned char)iKey;
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
     const unsigned char **ppRow;
 
     vAffineSetup(pSrc, iWidth, iHeight, iSrcPitch, iU0, iV0, iDuRow, iDvRow, iDuCol, iDvCol, uShr8);
 
-    count_y = (uint32_t)iHeight;
-    ppRow = row_ptrs;
+    guCountY = (uint32_t)iHeight;
+    ppRow = gpRowPtrs;
     do {
         const unsigned char *pPixel = *ppRow;
-        const int32_t *pCol = col_offsets;
+        const int32_t *pCol = giColOffsets;
 
-        count_x = (uint32_t)iWidth;
+        guCountX = (uint32_t)iWidth;
         do {
             pPixel += *pCol++;
-            if (*pPixel != bKey)
+            if (*pPixel != cKey)
                 *pDst = pBlend[*pDst * 256 + *pPixel];
             pDst++;
-        } while (--count_x != 0);
+        } while (--guCountX != 0);
         pDst += iDstSkip;
         ppRow++;
-    } while (--count_y != 0);
+    } while (--guCountY != 0);
 }
 
 /*
@@ -429,28 +437,28 @@ void AffineBlit8_Remap(unsigned char *pDst, const unsigned char *pSrc, int iWidt
                        int iDstPitch, int iSrcPitch, int iKey, int iU0, int iV0,
                        int iDuRow, int iDvRow, int iDuCol, int iDvCol, const unsigned char *pRemap)
 {
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char cKey = (unsigned char)iKey;
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
     const unsigned char **ppRow;
 
     vAffineSetup(pSrc, iWidth, iHeight, iSrcPitch, iU0, iV0, iDuRow, iDvRow, iDuCol, iDvCol, uShr8);
 
-    count_y = (uint32_t)iHeight;
-    ppRow = row_ptrs;
+    guCountY = (uint32_t)iHeight;
+    ppRow = gpRowPtrs;
     do {
         const unsigned char *pPixel = *ppRow;
-        const int32_t *pCol = col_offsets;
+        const int32_t *pCol = giColOffsets;
 
-        count_x = (uint32_t)iWidth;
+        guCountX = (uint32_t)iWidth;
         do {
             pPixel += *pCol++;
-            if (*pPixel != bKey)
+            if (*pPixel != cKey)
                 *pDst = pRemap[*pPixel];
             pDst++;
-        } while (--count_x != 0);
+        } while (--guCountX != 0);
         pDst += iDstSkip;
         ppRow++;
-    } while (--count_y != 0);
+    } while (--guCountY != 0);
 }
 
 /*
@@ -463,28 +471,28 @@ void AffineBlit8_ShadeDst(unsigned char *pDst, const unsigned char *pSrc, int iW
                           int iDstPitch, int iSrcPitch, int iKey, int iU0, int iV0,
                           int iDuRow, int iDvRow, int iDuCol, int iDvCol, const unsigned char *pShade)
 {
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char cKey = (unsigned char)iKey;
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
     const unsigned char **ppRow;
 
     vAffineSetup(pSrc, iWidth, iHeight, iSrcPitch, iU0, iV0, iDuRow, iDvRow, iDuCol, iDvCol, uShr8);
 
-    count_y = (uint32_t)iHeight;
-    ppRow = row_ptrs;
+    guCountY = (uint32_t)iHeight;
+    ppRow = gpRowPtrs;
     do {
         const unsigned char *pPixel = *ppRow;
-        const int32_t *pCol = col_offsets;
+        const int32_t *pCol = giColOffsets;
 
-        count_x = (uint32_t)iWidth;
+        guCountX = (uint32_t)iWidth;
         do {
             pPixel += *pCol++;
-            if (*pPixel != bKey)
+            if (*pPixel != cKey)
                 *pDst = pShade[*pDst];
             pDst++;
-        } while (--count_x != 0);
+        } while (--guCountX != 0);
         pDst += iDstSkip;
         ppRow++;
-    } while (--count_y != 0);
+    } while (--guCountY != 0);
 }
 
 /*
@@ -509,23 +517,23 @@ void FillDword8(unsigned char *pDst, int iColour)
 void RleDecodeRow8_Remap(unsigned char *pDst, const unsigned char *pSrc, const unsigned char *pRemap,
                          int iThreshold, int iCount)
 {
-    unsigned char bThreshold = (unsigned char)iThreshold;
-    unsigned char bRunBias = (unsigned char)(bThreshold - 2);
+    unsigned char cThreshold = (unsigned char)iThreshold;
+    unsigned char cRunBias = (unsigned char)(cThreshold - 2);
     uint32_t uLeft = (uint32_t)iCount;
 
     for (;;) {
-        unsigned char bCode = *pSrc++;
+        unsigned char cCode = *pSrc++;
 
-        if (bCode < bThreshold) {
-            *pDst++ = pRemap[bCode];                /* literal */
+        if (cCode < cThreshold) {
+            *pDst++ = pRemap[cCode];                /* literal */
         } else {
-            unsigned char bRunMinus1 = (unsigned char)(bCode - bRunBias);
-            unsigned char bPixel;
+            unsigned char cRunMinus1 = (unsigned char)(cCode - cRunBias);
+            unsigned char cPixel;
 
-            uLeft -= bRunMinus1;                    /* the run's last pixel is counted below */
-            bPixel = pRemap[*pSrc++];
-            memset(pDst, bPixel, (size_t)bRunMinus1 + 1);
-            pDst += (size_t)bRunMinus1 + 1;
+            uLeft -= cRunMinus1;                    /* the run's last pixel is counted below */
+            cPixel = pRemap[*pSrc++];
+            memset(pDst, cPixel, (size_t)cRunMinus1 + 1);
+            pDst += (size_t)cRunMinus1 + 1;
         }
         if (--uLeft == 0)
             break;
@@ -543,31 +551,31 @@ void RleDecodeRow8_Remap(unsigned char *pDst, const unsigned char *pSrc, const u
 void RleBlit8_ColorKey(unsigned char *pDst, const unsigned char *pSrc, const unsigned char *pRemap,
                        int iThreshold, int iWidth, int iHeight, int iDstPitch, int iSrcPitch, int iKey)
 {
-    unsigned char bThreshold = (unsigned char)iThreshold;
-    unsigned char bKey = (unsigned char)iKey;
-    unsigned char bPixel = bKey;                    /* current (remapped) pixel */
-    unsigned int uRepeats = 0;                      /* further repeats of bPixel pending */
+    unsigned char cThreshold = (unsigned char)iThreshold;
+    unsigned char cKey = (unsigned char)iKey;
+    unsigned char cPixel = cKey;                    /* current (remapped) pixel */
+    unsigned int uRepeats = 0;                      /* further repeats of cPixel pending */
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
-    uint32_t uRows = (uint32_t)iHeight;
+    uint32_t uRows = (uint32_t)iHeight;             /* rows left */
 
     (void)iSrcPitch;
     do {
-        uint32_t uCols = (uint32_t)iWidth;
+        uint32_t uCols = (uint32_t)iWidth;          /* pixels left in the row */
 
         do {
             if (uRepeats != 0) {
                 uRepeats--;                         /* in a run: the same pixel again */
             } else {
-                unsigned char bCode = *pSrc++;
+                unsigned char cCode = *pSrc++;
 
-                if (bCode >= bThreshold) {          /* run: the pixel follows */
-                    uRepeats = (unsigned char)(bCode - bThreshold);
-                    bCode = *pSrc++;
+                if (cCode >= cThreshold) {          /* run: the pixel follows */
+                    uRepeats = (unsigned char)(cCode - cThreshold);
+                    cCode = *pSrc++;
                 }
-                bPixel = pRemap[bCode];
+                cPixel = pRemap[cCode];
             }
-            if (bPixel != bKey)
-                *pDst = bPixel;
+            if (cPixel != cKey)
+                *pDst = cPixel;
             pDst++;
         } while (--uCols != 0);
         pDst += iDstSkip;
@@ -582,9 +590,9 @@ void RleBlit8_ColorKey(unsigned char *pDst, const unsigned char *pSrc, const uns
 void RleBlit8_ColorKey_FlipX(unsigned char *pDst, const unsigned char *pSrc, const unsigned char *pRemap,
                              int iThreshold, int iWidth, int iHeight, int iDstPitch, int iSrcPitch, int iKey)
 {
-    unsigned char bThreshold = (unsigned char)iThreshold;
-    unsigned char bKey = (unsigned char)iKey;
-    unsigned char bPixel = bKey;
+    unsigned char cThreshold = (unsigned char)iThreshold;
+    unsigned char cKey = (unsigned char)iKey;
+    unsigned char cPixel = cKey;
     unsigned int uRepeats = 0;
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch + (uint32_t)iWidth);
     uint32_t uRows = (uint32_t)iHeight;
@@ -597,16 +605,16 @@ void RleBlit8_ColorKey_FlipX(unsigned char *pDst, const unsigned char *pSrc, con
             if (uRepeats != 0) {
                 uRepeats--;
             } else {
-                unsigned char bCode = *pSrc++;
+                unsigned char cCode = *pSrc++;
 
-                if (bCode >= bThreshold) {
-                    uRepeats = (unsigned char)(bCode - bThreshold);
-                    bCode = *pSrc++;
+                if (cCode >= cThreshold) {
+                    uRepeats = (unsigned char)(cCode - cThreshold);
+                    cCode = *pSrc++;
                 }
-                bPixel = pRemap[bCode];
+                cPixel = pRemap[cCode];
             }
-            if (bPixel != bKey)
-                *pDst = bPixel;
+            if (cPixel != cKey)
+                *pDst = cPixel;
             pDst--;                                 /* right to left */
         } while (--uCols != 0);
         pDst += iDstSkip;
@@ -624,7 +632,7 @@ void RleBlit8_ColorKey_FlipX(unsigned char *pDst, const unsigned char *pSrc, con
  * not the key.  (The byte is the source pixel for the first two, the shaded destination pixel for
  * Blit8_ShadeDst.)  The pattern lives for the whole call, across rows.
  */
-#define PATTERN_LOW(uPattern, b) (((uPattern) & 0xffffff00u) | (unsigned char)(b))
+#define PATTERN_LOW(uPattern, cByte) (((uPattern) & 0xffffff00u) | (unsigned char)(cByte))
 
 /*
  * Blit8_ColorKey (0x401BD6): copies an image, skipping key pixels.
@@ -636,7 +644,7 @@ void RleBlit8_ColorKey_FlipX(unsigned char *pDst, const unsigned char *pSrc, con
 void Blit8_ColorKey(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int iHeight,
                     int iDstPitch, int iSrcPitch, int iKey)
 {
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char cKey = (unsigned char)iKey;
     uint32_t uPattern = uByte4(iKey);               /* eax: key * 01010101h, al spoiled later */
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
     int32_t iSrcSkip = (int32_t)((uint32_t)iSrcPitch - (uint32_t)iWidth);
@@ -644,28 +652,28 @@ void Blit8_ColorKey(unsigned char *pDst, const unsigned char *pSrc, int iWidth, 
 
     do {
         int bSkipping = 1;                          /* the previous pixel was transparent */
-        uint32_t u;
+        uint32_t uLeft;
 
-        for (u = (uint32_t)iWidth >> 2; u != 0; u--) {
+        for (uLeft = (uint32_t)iWidth >> 2; uLeft != 0; uLeft--) {
             uint32_t uPixels = uRead32(pSrc);       /* 4 source pixels */
             int i;
 
             if (!bSkipping || uPixels != uPattern) {
-                bSkipping = (unsigned char)(uPixels >> 24) == bKey;
+                bSkipping = (unsigned char)(uPixels >> 24) == cKey;
                 for (i = 0; i < 4; i++, uPixels >>= 8)
-                    if ((unsigned char)uPixels != bKey)
+                    if ((unsigned char)uPixels != cKey)
                         pDst[i] = (unsigned char)uPixels;
             }
             pDst += 4;
             pSrc += 4;
         }
-        for (u = (uint32_t)iWidth & 3; u != 0; u--) {
-            unsigned char bPixel = *pSrc++;
+        for (uLeft = (uint32_t)iWidth & 3; uLeft != 0; uLeft--) {
+            unsigned char cPixel = *pSrc++;
 
-            uPattern = PATTERN_LOW(uPattern, bPixel);
+            uPattern = PATTERN_LOW(uPattern, cPixel);
             pDst++;
-            if (bPixel != bKey)
-                pDst[-1] = bPixel;
+            if (cPixel != cKey)
+                pDst[-1] = cPixel;
         }
         pSrc += iSrcSkip;
         pDst += iDstSkip;
@@ -680,7 +688,7 @@ void Blit8_ColorKey(unsigned char *pDst, const unsigned char *pSrc, int iWidth, 
 void Blit8_ColorKey_FlipX(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int iHeight,
                           int iDstPitch, int iSrcPitch, int iKey)
 {
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char cKey = (unsigned char)iKey;
     uint32_t uPattern = uByte4(iKey);
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch + (uint32_t)iWidth);
     int32_t iSrcSkip = (int32_t)((uint32_t)iSrcPitch - (uint32_t)iWidth);
@@ -688,28 +696,28 @@ void Blit8_ColorKey_FlipX(unsigned char *pDst, const unsigned char *pSrc, int iW
 
     do {
         int bSkipping = 1;
-        uint32_t u;
+        uint32_t uLeft;
 
-        for (u = (uint32_t)iWidth >> 2; u != 0; u--) {
+        for (uLeft = (uint32_t)iWidth >> 2; uLeft != 0; uLeft--) {
             uint32_t uPixels = uRead32(pSrc);       /* source pixels 0-3 go to dst, dst-1, dst-2, dst-3 */
             int i;
 
             if (!bSkipping || uPixels != uPattern) {
-                bSkipping = (unsigned char)(uPixels >> 24) == bKey;
+                bSkipping = (unsigned char)(uPixels >> 24) == cKey;
                 for (i = 0; i < 4; i++, uPixels >>= 8)
-                    if ((unsigned char)uPixels != bKey)
+                    if ((unsigned char)uPixels != cKey)
                         pDst[-i] = (unsigned char)uPixels;
             }
             pDst -= 4;
             pSrc += 4;
         }
-        for (u = (uint32_t)iWidth & 3; u != 0; u--) {
-            unsigned char bPixel = *pSrc++;
+        for (uLeft = (uint32_t)iWidth & 3; uLeft != 0; uLeft--) {
+            unsigned char cPixel = *pSrc++;
 
-            uPattern = PATTERN_LOW(uPattern, bPixel);
+            uPattern = PATTERN_LOW(uPattern, cPixel);
             pDst--;
-            if (bPixel != bKey)
-                pDst[1] = bPixel;
+            if (cPixel != cKey)
+                pDst[1] = cPixel;
         }
         pSrc += iSrcSkip;
         pDst += iDstSkip;
@@ -727,30 +735,30 @@ void Blit8_ColorKey_FlipX(unsigned char *pDst, const unsigned char *pSrc, int iW
 void Blit8_Blend_FlipX(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int iHeight,
                        int iDstPitch, int iSrcPitch, int iKey, const unsigned char *pBlend)
 {
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char cKey = (unsigned char)iKey;
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch + (uint32_t)iWidth);
     int32_t iSrcSkip = (int32_t)((uint32_t)iSrcPitch - (uint32_t)iWidth);
     uint32_t uRows = (uint32_t)iHeight;
 
     do {
-        uint32_t u;
+        uint32_t uLeft;
         int i;
 
-        for (u = (uint32_t)iWidth >> 2; u != 0; u--) {
+        for (uLeft = (uint32_t)iWidth >> 2; uLeft != 0; uLeft--) {
             for (i = 0; i < 4; i++)
-                if (pSrc[i] != bKey)
+                if (pSrc[i] != cKey)
                     pDst[-i] = pBlend[pDst[-i] * 256 + pSrc[i]];
             pDst -= 4;
             pSrc += 4;
         }
-        for (u = (uint32_t)iWidth & 3; u != 0; u--) {
-            unsigned char bPixel;
+        for (uLeft = (uint32_t)iWidth & 3; uLeft != 0; uLeft--) {
+            unsigned char cPixel;
 
             pSrc++;
             pDst--;
-            bPixel = pSrc[-1];
-            if (bPixel != bKey)
-                pDst[-1] = pBlend[pDst[-1] * 256 + bPixel];     /* NB sic: should be pDst[1] */
+            cPixel = pSrc[-1];
+            if (cPixel != cKey)
+                pDst[-1] = pBlend[pDst[-1] * 256 + cPixel];     /* NB sic: should be pDst[1] */
         }
         pSrc += iSrcSkip;
         pDst += iDstSkip;
@@ -765,18 +773,18 @@ void Blit8_Blend_FlipX(unsigned char *pDst, const unsigned char *pSrc, int iWidt
 void Blit8_Silhouette(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int iHeight,
                       int iDstPitch, int iSrcPitch, int iKey, int iColour)
 {
-    unsigned char bKey = (unsigned char)iKey;
-    unsigned char bColour = (unsigned char)iColour;
+    unsigned char cKey = (unsigned char)iKey;
+    unsigned char cColour = (unsigned char)iColour;
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
     int32_t iSrcSkip = (int32_t)((uint32_t)iSrcPitch - (uint32_t)iWidth);
     uint32_t uRows = (uint32_t)iHeight;
 
     do {
-        uint32_t u;
+        uint32_t uLeft;
 
-        for (u = (uint32_t)iWidth; u != 0; u--) {
-            if (*pSrc != bKey)
-                *pDst = bColour;
+        for (uLeft = (uint32_t)iWidth; uLeft != 0; uLeft--) {
+            if (*pSrc != cKey)
+                *pDst = cColour;
             pSrc++;
             pDst++;
         }
@@ -792,18 +800,18 @@ void Blit8_Silhouette(unsigned char *pDst, const unsigned char *pSrc, int iWidth
 void Blit8_Silhouette_FlipX(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int iHeight,
                             int iDstPitch, int iSrcPitch, int iKey, int iColour)
 {
-    unsigned char bKey = (unsigned char)iKey;
-    unsigned char bColour = (unsigned char)iColour;
+    unsigned char cKey = (unsigned char)iKey;
+    unsigned char cColour = (unsigned char)iColour;
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch + (uint32_t)iWidth);
     int32_t iSrcSkip = (int32_t)((uint32_t)iSrcPitch - (uint32_t)iWidth);
     uint32_t uRows = (uint32_t)iHeight;
 
     do {
-        uint32_t u;
+        uint32_t uLeft;
 
-        for (u = (uint32_t)iWidth; u != 0; u--) {
-            if (*pSrc != bKey)
-                *pDst = bColour;
+        for (uLeft = (uint32_t)iWidth; uLeft != 0; uLeft--) {
+            if (*pSrc != cKey)
+                *pDst = cColour;
             pSrc++;
             pDst--;
         }
@@ -821,14 +829,14 @@ void FillRect8_B(unsigned char *pDst, int iWidth, int iHeight, int iPitch, int i
     uint32_t uFill = uByte4(iColour);
     int32_t iSkip = (int32_t)((uint32_t)iPitch - (uint32_t)iWidth);
     uint32_t uRows = (uint32_t)iHeight;
-    uint32_t u;
+    uint32_t uLeft;
 
     do {
-        for (u = (uint32_t)iWidth >> 2; u != 0; u--) {
+        for (uLeft = (uint32_t)iWidth >> 2; uLeft != 0; uLeft--) {
             vWrite32(pDst, uFill);
             pDst += 4;
         }
-        for (u = (uint32_t)iWidth & 3; u != 0; u--)
+        for (uLeft = (uint32_t)iWidth & 3; uLeft != 0; uLeft--)
             *pDst++ = (unsigned char)iColour;
         pDst += iSkip;
     } while (--uRows != 0);
@@ -850,18 +858,18 @@ void FlipVertical8_Remap(unsigned char *pImage, int iWidth, int iHeight, const u
     uint32_t uPairs = (uint32_t)iHeight >> 1;
 
     do {
-        unsigned char *pT = pTop, *pB = pBottom;
-        uint32_t u = (uint32_t)iWidth;
+        unsigned char *pTopPixel = pTop, *pBottomPixel = pBottom;
+        uint32_t uLeft = (uint32_t)iWidth;
 
         do {
-            unsigned char bBottom = *pB;
-            unsigned char bTop = *pT;
+            unsigned char cBottom = *pBottomPixel;
+            unsigned char cTop = *pTopPixel;
 
-            *pB = pRemap[bTop];
-            *pT = pRemap[bBottom];
-            pB++;
-            pT++;
-        } while (--u != 0);
+            *pBottomPixel = pRemap[cTop];
+            *pTopPixel = pRemap[cBottom];
+            pBottomPixel++;
+            pTopPixel++;
+        } while (--uLeft != 0);
         pTop = PTR_ADD(pTop, iWidth);               /* top row down */
         pBottom = PTR_ADD(pBottom, 0u - (uint32_t)iWidth);  /* bottom row up */
     } while (--uPairs != 0);
@@ -873,12 +881,12 @@ void FlipVertical8_Remap(unsigned char *pImage, int iWidth, int iHeight, const u
  */
 void RemapBytes8(unsigned char *pBuffer, int iCount, const unsigned char *pRemap)
 {
-    uint32_t u = (uint32_t)iCount;
+    uint32_t uLeft = (uint32_t)iCount;
 
     do {
         *pBuffer = pRemap[*pBuffer];
         pBuffer++;
-    } while (--u != 0);
+    } while (--uLeft != 0);
 }
 
 /*
@@ -916,8 +924,8 @@ void StretchDouble320x240To640x480(unsigned char *pDst, const unsigned char *pSr
     (void)iUnused;
     for (iRow = 0; iRow < 240; iRow++) {
         for (iPair = 0; iPair < 160; iPair++) {
-            uint32_t uA = pSrc[0], uB = pSrc[1];
-            uint32_t uBlock = uA | (uA << 8) | (uB << 16) | (uB << 24);
+            uint32_t uLeftPixel = pSrc[0], uRightPixel = pSrc[1];
+            uint32_t uBlock = uLeftPixel | (uLeftPixel << 8) | (uRightPixel << 16) | (uRightPixel << 24);
 
             pSrc += 2;
             vWrite32(pDst + 640, uBlock);   /* the row below */
@@ -953,7 +961,7 @@ void Clear640x480(unsigned char *pFrame, unsigned int uValue)
 void Blit8_ShadeDst(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int iHeight,
                     int iDstPitch, int iSrcPitch, int iKey, const unsigned char *pShade)
 {
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char cKey = (unsigned char)iKey;
     uint32_t uPattern = uByte4(iKey);
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
     int32_t iSrcSkip = (int32_t)((uint32_t)iSrcPitch - (uint32_t)iWidth);
@@ -961,29 +969,29 @@ void Blit8_ShadeDst(unsigned char *pDst, const unsigned char *pSrc, int iWidth, 
 
     do {
         int bSkipping = 1;
-        uint32_t u;
+        uint32_t uLeft;
 
-        for (u = (uint32_t)iWidth >> 2; u != 0; u--) {
+        for (uLeft = (uint32_t)iWidth >> 2; uLeft != 0; uLeft--) {
             uint32_t uPixels = uRead32(pSrc);
             int i;
 
             if (!bSkipping || uPixels != uPattern) {
-                bSkipping = (unsigned char)(uPixels >> 24) == bKey;
+                bSkipping = (unsigned char)(uPixels >> 24) == cKey;
                 for (i = 0; i < 4; i++, uPixels >>= 8)
-                    if ((unsigned char)uPixels != bKey)
+                    if ((unsigned char)uPixels != cKey)
                         pDst[i] = pShade[pDst[i]];
             }
             pDst += 4;
             pSrc += 4;
         }
-        for (u = (uint32_t)iWidth & 3; u != 0; u--) {
+        for (uLeft = (uint32_t)iWidth & 3; uLeft != 0; uLeft--) {
             pSrc++;
             pDst++;
-            if (pSrc[-1] != bKey) {
-                unsigned char bShaded = pShade[pDst[-1]];
+            if (pSrc[-1] != cKey) {
+                unsigned char cShaded = pShade[pDst[-1]];
 
-                uPattern = PATTERN_LOW(uPattern, bShaded);
-                pDst[-1] = bShaded;
+                uPattern = PATTERN_LOW(uPattern, cShaded);
+                pDst[-1] = cShaded;
             }
         }
         pSrc += iSrcSkip;
@@ -998,16 +1006,16 @@ void Blit8_ShadeDst(unsigned char *pDst, const unsigned char *pSrc, int iWidth, 
 void Blit8_Remap(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int iHeight,
                  int iDstPitch, int iSrcPitch, int iKey, const unsigned char *pRemap)
 {
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char cKey = (unsigned char)iKey;
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
     int32_t iSrcSkip = (int32_t)((uint32_t)iSrcPitch - (uint32_t)iWidth);
     uint32_t uRows = (uint32_t)iHeight;
 
     do {
-        uint32_t u;
+        uint32_t uLeft;
 
-        for (u = (uint32_t)iWidth; u != 0; u--) {
-            if (*pSrc != bKey)
+        for (uLeft = (uint32_t)iWidth; uLeft != 0; uLeft--) {
+            if (*pSrc != cKey)
                 *pDst = pRemap[*pSrc];
             pSrc++;
             pDst++;
@@ -1024,16 +1032,16 @@ void Blit8_Remap(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int
 void Blit8_Blend(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int iHeight,
                  int iDstPitch, int iSrcPitch, int iKey, const unsigned char *pBlend)
 {
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char cKey = (unsigned char)iKey;
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
     int32_t iSrcSkip = (int32_t)((uint32_t)iSrcPitch - (uint32_t)iWidth);
     uint32_t uRows = (uint32_t)iHeight;
 
     do {
-        uint32_t u;
+        uint32_t uLeft;
 
-        for (u = (uint32_t)iWidth; u != 0; u--) {
-            if (*pSrc != bKey)
+        for (uLeft = (uint32_t)iWidth; uLeft != 0; uLeft--) {
+            if (*pSrc != cKey)
                 *pDst = pBlend[*pDst * 256 + *pSrc];
             pSrc++;
             pDst++;
@@ -1053,22 +1061,22 @@ void Blit8_Blend(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int
 void Blit8_ColorKey_ShadeKey(unsigned char *pDst, const unsigned char *pSrc, int iWidth, int iHeight,
                              int iDstPitch, int iSrcPitch, int iShadeKey, int iKey, const unsigned char *pShade)
 {
-    unsigned char bShadeKey = (unsigned char)iShadeKey;
-    unsigned char bKey = (unsigned char)iKey;
+    unsigned char cShadeKey = (unsigned char)iShadeKey;
+    unsigned char cKey = (unsigned char)iKey;
     int32_t iDstSkip = (int32_t)((uint32_t)iDstPitch - (uint32_t)iWidth);
     int32_t iSrcSkip = (int32_t)((uint32_t)iSrcPitch - (uint32_t)iWidth);
     uint32_t uRows = (uint32_t)iHeight;
 
     do {
-        uint32_t u;
+        uint32_t uLeft;
 
-        for (u = (uint32_t)iWidth; u != 0; u--) {
-            unsigned char bPixel = *pSrc;
+        for (uLeft = (uint32_t)iWidth; uLeft != 0; uLeft--) {
+            unsigned char cPixel = *pSrc;
 
-            if (bPixel == bShadeKey)
+            if (cPixel == cShadeKey)
                 *pDst = pShade[*pDst];
-            else if (bPixel != bKey)
-                *pDst = bPixel;
+            else if (cPixel != cKey)
+                *pDst = cPixel;
             pSrc++;
             pDst++;
         }

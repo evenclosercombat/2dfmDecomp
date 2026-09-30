@@ -33,29 +33,36 @@ DEFINE_GUID(guidKgt2kApp, 0xafd1fc20, 0xac5f, 0x11d1, 0xb4, 0x1f, 0x00, 0x00, 0x
    64-bit Windows has a 64-bit dplayx.dll only with the optional DirectPlay feature, and llvm-mingw
    has no x86-64 import library for it; without it the provider list stays empty and the netplay
    dialog reports that DirectPlay could not be created. */
-static HRESULT (WINAPI *gpfnDirectPlayEnumerateA)(LPDPENUMDPCALLBACKA, LPVOID);
-static HRESULT (WINAPI *gpfnDirectPlayCreate)(LPGUID, LPDIRECTPLAY *, IUnknown *);
+static HRESULT (WINAPI *gpfnDirectPlayEnumerateA)(LPDPENUMDPCALLBACKA, LPVOID);      /* dplayx.dll's DirectPlayEnumerateA, NULL if not loaded */
+static HRESULT (WINAPI *gpfnDirectPlayCreate)(LPGUID, LPDIRECTPLAY *, IUnknown *);  /* dplayx.dll's DirectPlayCreate, NULL if not loaded */
 
+/*
+ * 64-bit build only: loads dplayx.dll and looks up the two functions the game imports from it.  When
+ * the DLL is missing the pointers stay NULL and the macros below return DPERR_UNAVAILABLE.
+ * Globals: changes gpfnDirectPlayEnumerateA, gpfnDirectPlayCreate.
+ */
 static void vLoadDirectPlay(void)
 {
-    HMODULE hDplay = LoadLibraryA("dplayx.dll");
+    HMODULE hDplayDll = LoadLibraryA("dplayx.dll");    /* never freed: used until the game exits */
 
-    if (hDplay) {
-        gpfnDirectPlayEnumerateA = (HRESULT (WINAPI *)(LPDPENUMDPCALLBACKA, LPVOID))(void (*)(void))GetProcAddress(hDplay, "DirectPlayEnumerateA");
-        gpfnDirectPlayCreate = (HRESULT (WINAPI *)(LPGUID, LPDIRECTPLAY *, IUnknown *))(void (*)(void))GetProcAddress(hDplay, "DirectPlayCreate");
+    if (hDplayDll) {
+        gpfnDirectPlayEnumerateA = (HRESULT (WINAPI *)(LPDPENUMDPCALLBACKA, LPVOID))(void (*)(void))GetProcAddress(hDplayDll, "DirectPlayEnumerateA");
+        gpfnDirectPlayCreate = (HRESULT (WINAPI *)(LPGUID, LPDIRECTPLAY *, IUnknown *))(void (*)(void))GetProcAddress(hDplayDll, "DirectPlayCreate");
     }
 }
 
+/* the two DirectPlay functions the code calls, through the pointers above */
 #define DirectPlayEnumerateA(pfnCallback, pContext) \
     (gpfnDirectPlayEnumerateA ? gpfnDirectPlayEnumerateA(pfnCallback, pContext) : DPERR_UNAVAILABLE)
 #define DirectPlayCreate(pGuid, ppDirectPlay, pUnknown) \
     (gpfnDirectPlayCreate ? gpfnDirectPlayCreate(pGuid, ppDirectPlay, pUnknown) : DPERR_UNAVAILABLE)
 #endif
 
+/* the messages (packed, as sent); cType is the NETMSG_ code */
 #pragma pack(push, 1)
-typedef struct { BYTE bType; DWORD dwInput; } NETMSG_INPUT_T;               /* 5 bytes */
-typedef struct { BYTE bType; char szName[32]; DPID dpid; } NETMSG_JOIN_T;   /* 37 bytes (also NETMSG_HERE) */
-typedef struct { BYTE bType; char szText[64]; } NETMSG_CHAT_T;              /* 65 bytes */
+typedef struct { BYTE cType; DWORD dwInput; } NETMSG_INPUT_T;               /* 5 bytes */
+typedef struct { BYTE cType; char szName[32]; DPID dpid; } NETMSG_JOIN_T;   /* 37 bytes (also NETMSG_HERE) */
+typedef struct { BYTE cType; char szText[64]; } NETMSG_CHAT_T;              /* 65 bytes */
 #pragma pack(pop)
 
 /*
@@ -167,7 +174,7 @@ void vOnlineBroadcastInput(DWORD dwInput)
         for (iSlot = 0; iSlot < 8; iSlot++) {
             switch (gkgtLoadedCharacter[iSlot].iOnlineState) {
             case 1:
-                inputMsg.bType = NETMSG_INPUT;
+                inputMsg.cType = NETMSG_INPUT;
                 inputMsg.dwInput = dwInput;
                 vDpSendToAll(&inputMsg, sizeof(inputMsg));
                 break;
@@ -229,7 +236,7 @@ int iOnlineProcessReceivedMessages(void)
             sprintf(szJoined, "%s \202\263\202\361\202\252\223\374\202\301\202\304\202\253\202\334\202\265\202\275\202\346", &cMsg[1]);  /* %s さんが入ってきましたよ (%s has come in) */
             iSetDebugInfo(szJoined, 0xff00);
             /* answer with our (local slot's character) name; hereMsg.dpid is left unset */
-            hereMsg.bType = NETMSG_HERE;
+            hereMsg.cType = NETMSG_HERE;
             memcpy(hereMsg.szName, gkgtLoadedCharacter[giLocalOnlineSlot].kgtCore.szName, 32);
             vDpSendToPlayerGuaranteed(dpidFrom, &hereMsg, sizeof(hereMsg));
             gkgtLoadedCharacter[iSender].iOnlineLag = 0;
@@ -274,7 +281,7 @@ void vSendOnlineChatMessage(char *szText)
     NETMSG_CHAT_T chatMsg;
     char szLine[256];
 
-    chatMsg.bType = NETMSG_CHAT;
+    chatMsg.cType = NETMSG_CHAT;
     memcpy(chatMsg.szText, szText, 64);
     vDpSendToAllGuaranteed(&chatMsg, sizeof(chatMsg));
     sprintf(szLine, "%s:%s", gkgtLoadedCharacter[0].kgtCore.szName, szText);
@@ -395,7 +402,7 @@ void vOnlineAnnouncePlayerAndSetTitle(char *szSessionName)
     NETMSG_JOIN_T joinMsg;
     char szTitle[256];
 
-    joinMsg.bType = NETMSG_JOIN;
+    joinMsg.cType = NETMSG_JOIN;
     joinMsg.dpid = gdpidLocalPlayer;
     memcpy(joinMsg.szName, gszPlayerName, 32);
     vDpSendToAllGuaranteed(&joinMsg, sizeof(joinMsg));

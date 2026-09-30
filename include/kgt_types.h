@@ -113,11 +113,11 @@ struct kgtImageHeader {   /* size 0x14 (+ pointer growth): one image of a KGT fi
 /* the file record of an image header (0x14 bytes): dwAlloc is the pointer slot of the original,
    meaningless in the file; bReadKgtCore converts it to a kgtImageHeader */
 typedef struct kgtImageHeaderFile {
-    uint32_t dwAlloc;                                              /* 0x0000 */ /* kgtImageHeader.pAlloc */
-    int iWidth;                                                    /* 0x0004 */
-    int iHeight;                                                   /* 0x0008 */
-    int iFlags;                                                    /* 0x000c */
-    int iSize;                                                     /* 0x0010 */
+    uint32_t dwAlloc;                                              /* 0x0000 */ /* kgtImageHeader.pAlloc (not used) */
+    int iWidth;                                                    /* 0x0004 */ /* kgtImageHeader.iWidth */
+    int iHeight;                                                   /* 0x0008 */ /* kgtImageHeader.iHeight */
+    int iFlags;                                                    /* 0x000c */ /* kgtImageHeader.iFlags */
+    int iSize;                                                     /* 0x0010 */ /* kgtImageHeader.iSize */
 } kgtImageHeaderFile;
 
 struct kgtSound {   /* size 0x2a (+ pointer growth): one sound of a KGT file (wave, MIDI or CD track) as loaded (the file record is kgtSoundFile) */
@@ -135,10 +135,10 @@ struct kgtSound {   /* size 0x2a (+ pointer growth): one sound of a KGT file (wa
    is read, as the original does), dwSize the slot that becomes kgtSound.pWav */
 typedef struct kgtSoundFile {
     uint32_t dwAlloc;                                              /* 0x0000 */ /* kgtSound.pAlloc */
-    char szName[32];                                               /* 0x0004 */
-    DWORD iSize;                                                   /* 0x0024 */ /* kgtSound.iSize / pWav */
-    BYTE cFlags;                                                   /* 0x0028 */
-    BYTE cCdTrack;                                                 /* 0x0029 */
+    char szName[32];                                               /* 0x0004 */ /* kgtSound.szName */
+    DWORD dwSize;                                                  /* 0x0024 */ /* kgtSound.iSize / pWav */
+    BYTE cFlags;                                                   /* 0x0028 */ /* kgtSound.cFlags */
+    BYTE cCdTrack;                                                 /* 0x0029 */ /* kgtSound.cCdTrack */
 } kgtSoundFile;
 
 struct kgtCharacterCPUCommandSkillFull {   /* size 0x7: one step of a CPU command (kgtCpuCommand.kgtSteps) */
@@ -1110,8 +1110,8 @@ struct POSS_VTABLE_GAME_STATE {   /* size 0x48: Ghidra view of gpfnGamestateJump
 
 /* size checks: the 32-bit size of the original plus KGT_PTR_GROWTH per pointer (or pointer-sized
    member); the file records (no pointers) have their file size in both builds */
-#define KGT_ASSERT_SIZE(T, size32, nptr) \
-    _Static_assert(sizeof(T) == (size32) + (nptr) * KGT_PTR_GROWTH, "size of " #T)
+#define KGT_ASSERT_SIZE(T, iSize32, iPointers) \
+    _Static_assert(sizeof(T) == (iSize32) + (iPointers) * KGT_PTR_GROWTH, "size of " #T)
 KGT_ASSERT_SIZE(kgtPallette, 0x4, 0);
 KGT_ASSERT_SIZE(kgt_core, 0x2234, 4);
 KGT_ASSERT_SIZE(kgtSkillHeader, 0x27, 0);

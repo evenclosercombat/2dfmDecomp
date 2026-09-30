@@ -3,7 +3,12 @@
  *
  * The original was built with Visual C++ 6.0 (cl 12.00.8168) /Ox and its own Win32/DirectX headers
  * (the main branch reproduces that build); this branch is built with clang and the mingw-w64
- * headers, see README.md.
+ * headers, for x86-64 or i686, see README.md.
+ *
+ * The C is the main branch's, so it still contains the constructions that steered VC6 to the
+ * original's machine code (marked "matching:" and explained where they appear: empty boundaryN
+ * labels, iStackPadN locals, dead stores, reads through pointers, value-neutral casts).  They are
+ * kept so that the branches stay comparable; for clang they are plain, harmless C.
  */
 #ifndef KGT_H
 #define KGT_H

@@ -30,7 +30,7 @@ void vSpawnOnlineDialog(HINSTANCE hInstance, HWND hWnd);
 void vGetLocalHostIpAddress(void);
 
 /* main.c - memory, sound, KGT file loading */
-void vMemzero(void *pAddress, size_t iSize);
+void vMemzero(void *pAddress, size_t uSize);
 void vSetupDsound(void);
 void vReleaseDsound(void);
 void vStopAndResetAllWavs(void);

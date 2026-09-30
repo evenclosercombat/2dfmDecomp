@@ -1,6 +1,11 @@
 /*
  * game_bss.c - definition of gBss, the game's uninitialized variables in their original order
- * (see include/game_bss.h), checks of that layout, and pBssAddr32.
+ * (see include/game_bss.h), compile-time checks of that layout, and pBssAddr32, which maps an
+ * address of the original's .bss to the same byte of this build's gBss.
+ *
+ * In the i686 build every variable is checked against its original address and size; in the
+ * x86-64 build (where the variables holding pointers are wider) the checks are that the pointer-free
+ * variables keep their size and the others are pointer-aligned.
  */
 #include <stddef.h>
 #include "game_bss.h"   /* not kgt.h: its globals.h turns the variable names into BSS() macros */
@@ -13,7 +18,8 @@ __attribute__((aligned(32))) kgtBss gBss;
  * this build's (MAP_PLAIN no pointers inside: the same bytes; MAP_PTRS pointers or pointer-sized
  * values; MAP_CORE a structure starting with a kgt_core; MAP_TRAILS the after-image trails;
  * MAP_NONE other structures with pointers, not mapped by pBssAddr32).  BSS_FIELDS are the names
- * inside other variables (name, original address, size).
+ * inside other variables (name, original address, size).  Both are X macros: X is applied to every
+ * row (the checks below, and the table of pBssAddr32).
  */
 #define BSS_MEMBERS(X) \
     X(g_4213c4, 0x4213c4, 4, MAP_PLAIN) \
@@ -227,17 +233,19 @@ __attribute__((aligned(32))) kgtBss gBss;
     X(giShakeYAmplitude, 0x447dc5, 4) \
     X(giShakeYTimeLeft, 0x447dc9, 4) \
     X(giShakeYDuration, 0x447dcd, 4) \
-    X(gAfterImageLayers, 0x447f80, 161600) \
+    X(gAfterImageLayers, 0x447f80, 161600) /* (engine.c's former view of the trails, unused) */ \
     X(gAfterImageTrailsBase, 0x447930, 1) \
     /* end */
-#define MAP_PLAIN  0
-#define MAP_PTRS   1
-#define MAP_CORE   2
-#define MAP_TRAILS 3
-#define MAP_NONE   4
+/* how pBssAddr32 maps the bytes of a variable (see above) */
+#define MAP_PLAIN  0    /* no pointers: byte n of the original is byte n here */
+#define MAP_PTRS   1    /* an array of pointers or pointer-sized values: 4 bytes there, sizeof(void *) here */
+#define MAP_CORE   2    /* a KGT file structure: the 4 pointers of its kgt_core move what follows */
+#define MAP_TRAILS 3    /* the after-image trails (unk_0x650_struct[100]) */
+#define MAP_NONE   4    /* other structures with pointers: not mapped (pBssAddr32 returns NULL) */
 
 #if !defined(_WIN64)
-/* i686: exactly the original layout */
+/* i686: exactly the original layout (every name at its original address, every member of its
+   original size, gBss as large as the original .bss from 0x4213c0 to 0x541fa0) */
 #define CHECK(name, addr, size) \
     _Static_assert(BSS_OFS_##name == (addr) - BSS_ADDR && BSS_OFS_##name + (size) <= sizeof(kgtBss), #name);
 #define CHECK_MEMBER(name, addr, size, map) \
@@ -248,7 +256,8 @@ _Static_assert(sizeof(kgtBss) == 0x541fa0 - BSS_ADDR, "size of gBss");
 BSS_MEMBERS(CHECK_MEMBER)
 BSS_FIELDS(CHECK)
 #else
-/* x86-64: the variables without pointers keep their size, the pointer-sized ones are pointer-aligned */
+/* x86-64: the variables without pointers keep their size, the others are pointer-aligned, and the
+   arrays of pointers have sizeof(void *) per original 4 bytes */
 #define CHECK_MEMBER(name, addr, size, map) \
     _Static_assert((map) != MAP_PLAIN || sizeof(gBss.m_##name) == (size), #name); \
     _Static_assert((map) == MAP_PLAIN || offsetof(kgtBss, m_##name) % sizeof(void *) == 0, #name); \
@@ -258,56 +267,76 @@ BSS_MEMBERS(CHECK_MEMBER)
 
 /* ---- pBssAddr32 ---- */
 
+/* one variable of gBss for pBssAddr32 */
 typedef struct {
     uint32_t uAddr;     /* original address */
     uint32_t uSize;     /* size in the original */
-    size_t ofs;         /* offset in gBss */
-    int iMap;           /* MAP_ */
+    size_t uOfs;        /* offset in gBss */
+    int iMap;           /* MAP_PLAIN ... MAP_NONE */
 } BssVar;
 
 #define BSS_VAR_ENTRY(name, addr, size, map) { addr, size, offsetof(kgtBss, m_##name), map },
-static const BssVar gBssVars[] = { BSS_MEMBERS(BSS_VAR_ENTRY) };
+static const BssVar gBssVars[] = { BSS_MEMBERS(BSS_VAR_ENTRY) };    /* every member of kgtBss, in address order */
 
-/* offset o of the original layout of a structure whose pointers (4 bytes there) start at the
-   original offsets auSlots[0..n-1] (ascending), in this build's layout; inside a pointer: its low bytes */
-static size_t uMapPtrSlots(uint32_t o, const uint32_t *auSlots, int n)
+/*
+ * Converts an offset inside a structure from the original layout to this build's.
+ * uOfs32: offset in the original structure; auSlots: the original offsets of its pointers (4 bytes
+ * each there), ascending; iSlots: their number.
+ * Returns the offset in this build: uOfs32 plus KGT_PTR_GROWTH for every pointer that ends at or
+ * before it (an offset inside a pointer maps to the same byte of its low 4 bytes).
+ */
+static size_t uMapPtrSlots(uint32_t uOfs32, const uint32_t *auSlots, int iSlots)
 {
-    size_t uExtra = 0;
+    size_t uGrowth = 0;
     int i;
 
-    for (i = 0; i < n && o >= auSlots[i] + 4; i++)
-        uExtra += KGT_PTR_GROWTH;
-    return o + uExtra;
+    for (i = 0; i < iSlots && uOfs32 >= auSlots[i] + 4; i++)
+        uGrowth += KGT_PTR_GROWTH;
+    return uOfs32 + uGrowth;
 }
 
+/*
+ * Maps an address of the original's .bss (0x4213c0-0x541fa0) to the byte of gBss that holds the
+ * same data in this build.  battle.c uses it where the original reaches memory through the wrong
+ * structure (the script owner views, see pOwnerByte there).
+ * uAddr32: the original address.
+ * Returns the byte (in the i686 build simply gBss + uAddr32 - 0x4213c0), or NULL when the address is
+ * in no variable or in one whose layout is not mapped (MAP_NONE).
+ * Globals: reads gBssVars.
+ */
 unsigned char *pBssAddr32(uint32_t uAddr32)
 {
-    static const uint32_t auCoreSlots[4] = { 0x110, 0x114, 0x118, 0x221c };  /* kgt_core's pointers */
+    static const uint32_t auCoreSlots[4] = { 0x110, 0x114, 0x118, 0x221c };  /* original offsets of kgt_core's pointers */
     const BssVar *pVar;
-    uint32_t o, r, n;
+    /* uOfs: offset of the address in its variable (original layout); MAP_TRAILS: uTrailOfs the offset
+       in the trail, uPtrsBefore the trail's pointers before that offset */
+    uint32_t uOfs, uTrailOfs, uPtrsBefore;
     size_t i;
 
     for (i = 0; i < sizeof(gBssVars) / sizeof(gBssVars[0]); i++) {
+        /* find the variable that contains the address */
         pVar = &gBssVars[i];
         if (uAddr32 < pVar->uAddr || uAddr32 - pVar->uAddr >= pVar->uSize)
             continue;
-        o = uAddr32 - pVar->uAddr;
+        uOfs = uAddr32 - pVar->uAddr;
         switch (pVar->iMap) {
         case MAP_PLAIN:
-            return (unsigned char *)&gBss + pVar->ofs + o;
+            return (unsigned char *)&gBss + pVar->uOfs + uOfs;
         case MAP_PTRS:
-            return (unsigned char *)&gBss + pVar->ofs + o / 4 * sizeof(void *) + o % 4;
+            return (unsigned char *)&gBss + pVar->uOfs + uOfs / 4 * sizeof(void *) + uOfs % 4;
         case MAP_CORE:
-            return (unsigned char *)&gBss + pVar->ofs + uMapPtrSlots(o, auCoreSlots, 4);
+            return (unsigned char *)&gBss + pVar->uOfs + uMapPtrSlots(uOfs, auCoreSlots, 4);
         case MAP_TRAILS:
-            /* unk_0x650_struct: pStep at 8, then 100 frames of 16 bytes with pImage at 12 */
-            r = o % 0x650;
-            n = (r >= 12) + (r >= 32 ? (r - 32) / 16 + 1 : 0);   /* pointers before r */
-            if (r >= 8 && r < 12)
-                n = 0;
-            else if (r >= 16 && (r - 16) % 16 >= 12)
-                n = 1 + (r - 16) / 16;   /* inside frame (r - 16) / 16's pImage */
-            return (unsigned char *)&gBss + pVar->ofs + o / 0x650 * sizeof(unk_0x650_struct) + r + n * KGT_PTR_GROWTH;
+            /* unk_0x650_struct (0x650 bytes in the original): pStep at 8, then 100 frames of 16 bytes
+               from 16 with pImage at 12; uPtrsBefore = pointers that end before the byte, or those
+               before the pointer the byte is in */
+            uTrailOfs = uOfs % 0x650;
+            uPtrsBefore = (uTrailOfs >= 12) + (uTrailOfs >= 32 ? (uTrailOfs - 32) / 16 + 1 : 0);   /* pointers before uTrailOfs */
+            if (uTrailOfs >= 8 && uTrailOfs < 12)
+                uPtrsBefore = 0;
+            else if (uTrailOfs >= 16 && (uTrailOfs - 16) % 16 >= 12)
+                uPtrsBefore = 1 + (uTrailOfs - 16) / 16;   /* inside frame (uTrailOfs - 16) / 16's pImage */
+            return (unsigned char *)&gBss + pVar->uOfs + uOfs / 0x650 * sizeof(unk_0x650_struct) + uTrailOfs + uPtrsBefore * KGT_PTR_GROWTH;
         default:
             return NULL;
         }

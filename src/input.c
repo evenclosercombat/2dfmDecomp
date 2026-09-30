@@ -272,7 +272,7 @@ int iTranslateKeyPress(int iController, int iPlayer)
     /* buttons: gcJoystickButtons holds the button number (bit of dwButtons) of A-F and pause.
        (The count is taken modulo 32 as the x86 shift of the original does; a button number of 32 or
        more from the ini would otherwise be an undefined shift.) */
-#define JOY_BUTTON_BIT(n) (1u << ((n) & 31))
+#define JOY_BUTTON_BIT(cButton) (1u << ((cButton) & 31))
     if (joyInfo.dwButtons & JOY_BUTTON_BIT(gcJoystickButtons[iController][0]))
         iInput |= IN_A;
     if (joyInfo.dwButtons & JOY_BUTTON_BIT(gcJoystickButtons[iController][1]))

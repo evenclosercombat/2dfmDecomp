@@ -3,18 +3,22 @@
 C source of `KGT2nd_GAME.exe`, the game runtime of *2D Fighter Maker 2nd* (2D格闘ツクール2nd.,
 Enterbrain, 2002).
 
-**This is the `win64` branch: the plain-C port of the `nonmatching` branch to 64-bit Windows.** It
-builds a native x86-64 executable with a modern C compiler (clang from llvm-mingw, one command) that
-plays like the 32-bit program and reads the game data files unchanged; the same source still builds
-the 32-bit (i686) program of the `nonmatching` branch, with the original's memory layout.  The
-**`nonmatching`** branch is the 32-bit-only C build; the **`main`** branch has the exact rebuild of
-the original executable with Visual C++ 6.0 (SHA-256
-`287c6f39aea5265b126dff301af9e8fdf49e6edc78957eeb50aba38e6705326a`).
+**This is the `win64` branch: the plain-C port of the `nonmatching` branch to 64-bit Windows.** One
+source tree, built with clang from llvm-mingw, gives two programs: a native x86-64 executable (the
+default) and the 32-bit (i686) program of the `nonmatching` branch, with the original's memory
+layout. Both play like the original and read the game data files unchanged. The other branches:
+
+* **`main`**: the exact rebuild of the original executable (SHA-256
+  `287c6f39aea5265b126dff301af9e8fdf49e6edc78957eeb50aba38e6705326a`) with Visual C++ 6.0, the
+  blitter assembled with JWasm; the 6 functions whose C VC6 does not yet compile to the original bytes
+  are built there from the original's machine code;
+* **`nonmatching`**: every function compiled from C, 32-bit only, built with clang.
 
 This repository contains only what the build needs. The decompilation work itself - matching tools,
 the Ghidra notes, rename history and style guide - is in the development repository `kgt2nd_decomp`,
 and what was learned about VC6 in `vc6-matching-notes`. Source comments that mention `docs/...` files
-or VC6 details refer to that work and to the main branch.
+or VC6 code generation (the `matching:` notes, the "VC6 history" paragraphs) refer to that work and to
+the main branch; on this branch all code is plain C compiled by clang.
 
 The executable's embedded artwork (three 640x480 bitmaps, a text bitmap and the icon) is in
 `rsrc/assets/`; these are Enterbrain's copyrighted images, so keep that in mind before publishing the
@@ -22,84 +26,113 @@ repository. No other game data is included.
 
 ## Requirements
 
-* 64-bit Windows 10/11 for the x86-64 build (tested on Windows 11); the i686 build runs on any 32-bit
-  or 64-bit Windows 10/11 (under WOW64 on 64-bit Windows).
-* **[llvm-mingw](https://github.com/mstorsjo/llvm-mingw)**, any recent release (it needs C23
-  `#embed`, i.e. clang 19 or later). Tested with llvm-mingw 20260922 (clang 23.1.2), the
-  `ucrt-x86_64` package: its `x86_64-w64-mingw32-clang` builds the 64-bit program, its
-  `i686-w64-mingw32-clang` the 32-bit one. It brings the mingw-w64 headers and import libraries for
-  DirectDraw and DirectSound (and, for i686, DirectPlay).
+* Windows 10/11: 64-bit Windows for the x86-64 build (tested on Windows 11); the i686 build also runs
+  on 32-bit Windows, and under WOW64 on 64-bit Windows.
+* **llvm-mingw** (<https://github.com/mstorsjo/llvm-mingw/releases>), any release with clang 19 or
+  later (the resources are included with C23 `#embed`). On a 64-bit Windows host take the
+  `llvm-mingw-<version>-ucrt-x86_64.zip` package and unpack it anywhere, e.g. `C:\llvm-mingw`.
+  Tested with llvm-mingw 20260922 (`llvm-mingw-20260922-ucrt-x86_64`). Its `bin` directory has
+  `x86_64-w64-mingw32-clang` for the 64-bit program and `i686-w64-mingw32-clang` for the 32-bit one,
+  with the mingw-w64 headers and import libraries for DirectDraw, DirectSound and (i686 only)
+  DirectPlay.
 
-  With the `ucrt` packages the executable uses the Universal C Runtime that is part of Windows 10 and
-  11 (both builds, so their `rand()` sequences are the same). It needs no other DLLs than Windows' own.
-
-  GCC from mingw-w64 (version 15 or later for `#embed`) should work too, but is untested.
+  With the `ucrt` package both executables use the Universal C Runtime that is part of Windows 10
+  and 11 (so their `rand()` sequences are the same) and need no DLLs other than Windows' own.
+  GCC from mingw-w64 (15 or later, for `#embed`) should work too, but is untested.
 
 Nothing else: no Python, no Visual C++, no assembler.
 
 ## Building
 
 ```
-build.cmd            64-bit build (x86-64): build\KGT2nd_GAME.exe
-build.cmd x86        32-bit build (i686):   build\KGT2nd_GAME_x86.exe
+build.cmd              64-bit build (x86-64) -> build\KGT2nd_GAME.exe
+build.cmd x86          32-bit build (i686)   -> build\KGT2nd_GAME_x86.exe
 ```
 
-`build.cmd` uses the compiler in `%CC%`, or `x86_64-w64-mingw32-clang` (with `x86`:
-`i686-w64-mingw32-clang`) from `PATH`, e.g.
+`build.cmd` uses the compiler in the environment variable `CC` if it is set, otherwise
+`x86_64-w64-mingw32-clang` (with `x86`: `i686-w64-mingw32-clang`) from `PATH`. The output name
+follows the target of that compiler (`-dumpmachine`), so a `CC` left pointing at the i686 compiler
+builds `build\KGT2nd_GAME_x86.exe` even without `x86`, and `x86` has no effect when `CC` is set.
+
+From `cmd.exe`, in the repository directory:
 
 ```
-set "CC=C:\llvm-mingw\bin\x86_64-w64-mingw32-clang.exe"
+set "PATH=C:\llvm-mingw\bin;%PATH%"
 build.cmd
+build.cmd x86
 ```
 
-The output name follows the target of the compiler (`-dumpmachine`). Extra arguments go to the
-compiler (`build.cmd -O0 -g` for a debug build, `build.cmd x86 -O0 -g` for a 32-bit one; an `-O`
-option replaces the default `-O2`).
+or `set "CC=C:\llvm-mingw\bin\x86_64-w64-mingw32-clang.exe"` and then `build.cmd`.
 
-The same builds as one command each, to run by hand from any shell in the repository directory (list
-the sources explicitly where the shell does not expand `src/*.c`; llvm-mingw's clang also expands the
-wildcard itself):
+From PowerShell (which does not run scripts from the current directory without `.\`):
+
+```
+$env:Path = "C:\llvm-mingw\bin;" + $env:Path
+.\build.cmd
+.\build.cmd x86
+```
+
+or `$env:CC = "C:\llvm-mingw\bin\x86_64-w64-mingw32-clang.exe"` and then `.\build.cmd`
+(`Remove-Item Env:CC` to go back to the `PATH` lookup).
+
+Further arguments go to the compiler after everything else (the `x64` / `x86` argument, if any, must
+come first); one starting with `-O` replaces the default `-O2`: `build.cmd -O0 -g` is a debug build,
+`build.cmd x86 -O0 -g` a 32-bit one.
+
+The same builds as one command each, from any shell in the repository directory (llvm-mingw's clang
+expands `src/*.c` itself; list the files where another compiler does not):
 
 ```
 x86_64-w64-mingw32-clang -std=gnu23 -O2 -fwrapv -fno-strict-aliasing -Wno-switch -mwindows -Iinclude src/*.c -o build/KGT2nd_GAME.exe -lddraw -ldsound -lwsock32 -lwinmm
 i686-w64-mingw32-clang -std=gnu23 -O2 -fwrapv -fno-strict-aliasing -Wno-switch -mwindows -Iinclude src/*.c -o build/KGT2nd_GAME_x86.exe -lddraw -ldsound -ldplayx -lwsock32 -lwinmm
 ```
 
+(`build\` must exist; `build.cmd` creates it.)
+
 * `-fwrapv` and `-fno-strict-aliasing` are required: signed overflow must wrap as in the original's
   machine code, and the uninitialized globals are one block of memory accessed through different
   types (see below), as are parts of the game's data structures.
 * `-Wno-switch` only silences warnings about `switch` statements over enums that do not list every
-  value.
-* The sources also compile without pointer-truncation warnings with `-Wall -Wextra
-  -Wpointer-to-int-cast -Wint-to-pointer-cast -Wshorten-64-to-32` (the remaining `-Wextra` warnings -
-  unused variables and parameters, signed/unsigned comparisons - are the original code's).
+  value. The build prints no warnings.
+* With `-Wall -Wextra -Wpointer-to-int-cast -Wint-to-pointer-cast -Wshorten-64-to-32` added, the
+  x86-64 build shows no pointer-truncation warnings; what remains (unused variables, parameters and a
+  label, three signed/unsigned comparisons, and the enum `switch` warnings that `-Wall` turns on
+  again) is the original code's.
+
+### Optional: icon and version information in the file
+
+The executable has no resource section: the menu, the dialogs, the bitmaps and the icon are compiled
+in as C data (`src/resources.c`), so the window, the taskbar and the about box show the game's icon,
+but Explorer shows a generic icon and no version details. To add them to the file, compile
+`rsrc/kgt2nd.rc` with llvm-mingw's `windres` and pass the object to `build.cmd`. The `.rc` is UTF-16,
+which llvm's resource compiler does not read, so convert it to UTF-8 first (the commands work from
+`cmd.exe` and from PowerShell):
+
+```
+powershell -Command "[IO.File]::WriteAllText('build\kgt2nd_utf8.rc', [IO.File]::ReadAllText('rsrc\kgt2nd.rc', [Text.Encoding]::Unicode))"
+x86_64-w64-mingw32-windres -c 65001 -I rsrc/assets build/kgt2nd_utf8.rc -O coff -o build/kgt2nd.res.o
+build.cmd build\kgt2nd.res.o
+```
+
+For the 32-bit build use `i686-w64-mingw32-windres ... -o build/kgt2nd_x86.res.o` and
+`build.cmd x86 build\kgt2nd_x86.res.o`. The game itself still uses the compiled-in copies.
 
 ## Running
 
-Copy the executable into the game's folder, next to its data files. The game loads the system file
-named after the executable (`NAME.exe` loads `NAME.kgt`), so give it the name of the game's
-executable. Settings are read from `game.ini` in the same folder.
+Copy the executable into the game's folder, next to its data files, under the name of the game's
+executable: the game loads the system file named after the executable (`NAME.exe` loads `NAME.kgt`),
+except that a name starting with `KGT` (such as `KGT2nd_GAME.exe` itself) loads the file whose full
+path is `Filename` in the `[File]` section of `game.ini`, as in test play from the editor. Settings
+are read from `game.ini` in the same folder.
 
-* **DirectPlay**: the netplay dialog uses DirectPlay, which the shipped menu does not offer. The
-  32-bit build imports `dplayx.dll` like the original and lists the DirectPlay service providers at
-  start-up; on Windows 10/11 DirectPlay is an optional feature ("Legacy Components"), and if Windows
-  asks to install it, the game works either way. The 64-bit build loads `dplayx.dll` at start-up
-  instead of importing it (llvm-mingw has no x86-64 import library for it, and 64-bit Windows has a
-  64-bit `dplayx.dll` only with the DirectPlay feature installed); without it the list of service
-  providers is empty and the netplay dialog reports that DirectPlay could not be created.
-* **No icon or version information in Explorer**: the executable has no resource section (see below),
-  so Explorer shows a generic icon and no version details. The window, the taskbar and the about box
-  show the game's icon. If you want them in the file as well, compile `rsrc/kgt2nd.rc` with
-  llvm-mingw's resource compiler and link the result in (optional, not part of the build). The `.rc`
-  is UTF-16, which llvm-rc does not read, so convert it to UTF-8 first:
-
-  ```
-  powershell -Command "[IO.File]::WriteAllText('build\kgt2nd_utf8.rc', [IO.File]::ReadAllText('rsrc\kgt2nd.rc', [Text.Encoding]::Unicode))"
-  x86_64-w64-mingw32-windres -c 65001 -I rsrc/assets build/kgt2nd_utf8.rc -O coff -o build/kgt2nd.res.o
-  ```
-
-  and add `build/kgt2nd.res.o` to the compile command above (e.g. `build.cmd build\kgt2nd.res.o`;
-  `i686-w64-mingw32-windres` for the 32-bit build). The game itself still uses the compiled-in copies.
+* **DirectPlay**: the netplay dialog uses DirectPlay; the shipped menu does not offer it (menu command
+  2601 is not in the menu), but the service providers are enumerated at start-up. The 32-bit build
+  imports `dplayx.dll` like the original; on Windows 10/11 DirectPlay is an optional feature ("Legacy
+  Components"), and if Windows offers to install it, the game runs either way. The 64-bit build loads
+  `dplayx.dll` at start-up instead of importing it (llvm-mingw has no x86-64 import library for it, and
+  64-bit Windows has a 64-bit `dplayx.dll` only with the DirectPlay feature installed); without it the
+  list of service providers is empty and the netplay dialog reports that DirectPlay could not be
+  created.
 
 ## How this branch differs from `nonmatching`
 
@@ -124,17 +157,17 @@ behaviour and the file formats and gives the pointers room:
   last attacker (`iLastAttacker`) is now the pointer it always held (`pLastAttacker`). None of these
   structures is written to a file or sent over the network (the netplay messages are pointer-free
   and keep their byte layout).
-* **After-image trails** (`unk_0x650_struct`): header and 100 frames of 16 bytes in the original,
-  with image-step pointers in them; now typed members (`kgtFrames[]`) used by battle.c and engine.c
-  alike instead of int indexing.
+* **After-image trails** (`unk_0x650_struct`): a header and 100 frames of 16 bytes in the original,
+  with image-step pointers in them; now typed members (`kgtFrames[]`, `kgtTrailFrame`) used by
+  battle.c and engine.c alike instead of int indexing.
 * **Uninitialized globals** (`include/game_bss.h`, `src/game_bss.c`): still one object, `gBss`, with
   the variables in their original order, but the members that hold pointers take their size from the
-  real types and are pointer-aligned, and every `BSS_OFS_` is an `offsetof`. In the i686 build the
-  layout is exactly the original's (`game_bss.c` checks every address); in the x86-64 build the
-  variables grow in place. Names inside other variables (flash and shake variables behind the stage,
-  system variables behind the system file, test-play settings, story progress) are offsets from their
-  variable, after a `kgt_core` moved by its growth (`KGT_CORE_GROWTH`). The one place that clears a
-  variable together with its neighbours (`gBmiFrame` and the frame buffer handles) clears up to the
+  real types and are pointer-aligned, and every `BSS_OFS_` is computed with `offsetof`. In the i686
+  build the layout is exactly the original's (`game_bss.c` checks every address); in the x86-64 build
+  the variables grow in place. Names inside other variables (flash and shake variables behind the
+  stage, system variables behind the system file, test-play settings, story progress) are offsets from
+  their variable, after a `kgt_core` moved by its growth (`KGT_CORE_GROWTH`). The one place that clears
+  a variable together with its neighbours (`gBmiFrame` and the frame buffer handles) clears up to the
   last of them.
 * **The original's out-of-bounds views**: script commands of system, demo and stage objects (GL, EB, C
   and V with owner scope) use character fields of their file's structure, which the original reaches
@@ -164,7 +197,8 @@ Everything else is as on the `nonmatching` branch:
   kept `int` as with MSVC, a function that returned no value, and a `GlobalFree` of a resource pointer
   (harmless in the original, fatal in this build).
 * Everything VC6-specific that only served the byte match (the C++ stub, the empty `.def` file, the
-  post-link steps) is gone.
+  post-link steps) is gone; the `matching:` constructions inside the C (empty `boundaryN` labels,
+  `iStackPadN` locals, dead stores) are kept, so that the source stays comparable with `main`.
 
 ## Limitations of the 64-bit build
 
@@ -175,26 +209,28 @@ Everything else is as on the `nonmatching` branch:
 * Values that were pointers in the original are pointers of another size here, so where the original
   exposes one as a number (a garbage "variable" of a stage script aliasing an after-image trail's
   image pointer), the number differs; so it does between two runs of the original.
-* DirectPlay netplay could not be tested (no 64-bit DirectPlay installed on the test machine; the
-  menu of the shipped game does not offer it either).
+* DirectPlay netplay is untested (no 64-bit DirectPlay installed on the test machine; the menu of the
+  shipped game does not offer it either).
 
 ## Debug trace (off by default)
 
-Compiled with `-DKGT_TRACE` and a `trace.c` that defines `vTraceInput` and `vTraceTick` (kept outside
-this repository), the main loop runs a fixed 8 ticks per frame, the keyboard state is replaced by a
-script and a checksum of the pointer-free game state is logged after every tick; the i686 and x86-64
-builds were compared with it frame by frame. The two hooks (main.c, input.c) are inactive in normal
-builds.
+`src/main.c` and `src/input.c` have two hooks for comparing builds frame by frame, compiled only with
+`-DKGT_TRACE`: `vTraceInput` gets the keyboard state after `GetKeyboardState` (to replace it by a
+script), `vTraceTick` is called after every tick (to log a checksum of the game state), and the main
+loop runs a fixed 8 ticks per frame. The two functions are not in this repository; with a `trace.c`
+that defines them, `build.cmd -DKGT_TRACE path\to\trace.c` builds the traced program. The i686 and
+x86-64 builds were compared this way.
 
 ## Layout
 
 | path | contents |
 |---|---|
-| `build.cmd` | the build |
-| `src/*.c` | the game, one file per original translation unit (plus `game_bss.c`, `resources.c`, `blit.c`) |
-| `include/` | types (`kgt_types.h`), globals (`globals.h`, `game_bss.h`), prototypes, `blit.h` |
+| `build.cmd` | the build (both targets) |
+| `src/*.c` | the game, one file per original translation unit, plus `blit.c` (the original's assembler blitter), `game_bss.c` (`gBss`, the uninitialized variables) and `resources.c` (the resources) |
+| `include/` | `kgt.h` (included by every file), types (`kgt_types.h`), globals (`globals.h`, `game_bss.h`), prototypes (`protos.h`), `blit.h` |
 | `rsrc/kgt2nd.rc`, `rsrc/assets/` | the resources (dialogs, menu, version info) and the embedded images |
 | `tools/gen_resources.py` | regenerates `src/resources.c` from the `.rc` (not needed to build) |
+| `build/` | the output (not in the repository) |
 
 ## How the original was built (as far as can be told)
 

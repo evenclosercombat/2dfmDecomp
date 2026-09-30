@@ -13,40 +13,40 @@
 
 /* BITMAP RC_BMP_01: the .bmp file; the resource is what follows its 14-byte BITMAPFILEHEADER.
    Two leading bytes keep that BITMAPINFOHEADER 4-byte aligned. */
-static const BYTE gRc_RC_BMP_01[] __attribute__((aligned(4))) = {
+static const BYTE gcRc_RC_BMP_01[] __attribute__((aligned(4))) = {
     0, 0,
 #embed "../rsrc/assets/RC_BMP_01.bmp"
 };
 
 /* BITMAP RC_BMP_02: the .bmp file; the resource is what follows its 14-byte BITMAPFILEHEADER.
    Two leading bytes keep that BITMAPINFOHEADER 4-byte aligned. */
-static const BYTE gRc_RC_BMP_02[] __attribute__((aligned(4))) = {
+static const BYTE gcRc_RC_BMP_02[] __attribute__((aligned(4))) = {
     0, 0,
 #embed "../rsrc/assets/RC_BMP_02.bmp"
 };
 
 /* BITMAP RC_BMP_03: the .bmp file; the resource is what follows its 14-byte BITMAPFILEHEADER.
    Two leading bytes keep that BITMAPINFOHEADER 4-byte aligned. */
-static const BYTE gRc_RC_BMP_03[] __attribute__((aligned(4))) = {
+static const BYTE gcRc_RC_BMP_03[] __attribute__((aligned(4))) = {
     0, 0,
 #embed "../rsrc/assets/RC_BMP_03.bmp"
 };
 
 /* BITMAP RC_BMP_TEXT: the .bmp file; the resource is what follows its 14-byte BITMAPFILEHEADER.
    Two leading bytes keep that BITMAPINFOHEADER 4-byte aligned. */
-static const BYTE gRc_RC_BMP_TEXT[] __attribute__((aligned(4))) = {
+static const BYTE gcRc_RC_BMP_TEXT[] __attribute__((aligned(4))) = {
     0, 0,
 #embed "../rsrc/assets/RC_BMP_TEXT.bmp"
 };
 
 /* ICON EXE_ICO: the .ico file (ICONDIR, ICONDIRENTRY[], images) */
-static const BYTE gRc_EXE_ICO[] __attribute__((aligned(4))) = {
+static const BYTE gcRc_EXE_ICO[] __attribute__((aligned(4))) = {
 #embed "../rsrc/assets/EXE_ICO.ico"
 };
 
 /* MENU CUPID_MENU: MENUITEMTEMPLATEHEADER and MENUITEMTEMPLATEs (MF_POPUP 0x10, MF_END 0x80 on the
    last item of each level), texts in UTF-16 */
-static const WORD gRc_CUPID_MENU[] __attribute__((aligned(4))) = {
+static const WORD gwRc_CUPID_MENU[] __attribute__((aligned(4))) = {
     0x0000, 0x0000,  /* MENUITEMTEMPLATEHEADER: version 0, offset 0 */
     0x0010, '&', 'W', 'i', 'n', 'd', 'o', 'w', 0x0000,  /* POPUP "&Window" */
     0x0000, 0x0911, '&', 'W', 'i', 'n', 'd', 'o', 'w', 'S', 'i', 'z', 'e', ' ', '1', 'x', '1', 0x0000,  /*     MENUITEM "&WindowSize 1x1", 2321 */
@@ -62,7 +62,7 @@ static const WORD gRc_CUPID_MENU[] __attribute__((aligned(4))) = {
 /* DIALOG ABOUT_DLG: DLGTEMPLATE and DWORD-aligned DLGITEMTEMPLATEs (style, extended style, x, y, cx, cy,
    id, class (0xffff + atom: 0x80 Button, 0x81 Edit, 0x82 Static, 0x83 ListBox, 0x85 ComboBox),
    text, 0 bytes of creation data), texts in UTF-16 as the original's (see the .rc) */
-static const WORD gRc_ABOUT_DLG[] __attribute__((aligned(4))) = {
+static const WORD gwRc_ABOUT_DLG[] __attribute__((aligned(4))) = {
     0x00c0, 0x9000, 0x0000, 0x0000,  /* DLGTEMPLATE: style 0x900000C0, no extended style */
     0x0004, 0x0000, 0x0000, 0x00c8, 0x0050,  /* 4 controls; x, y, cx, cy */
     0x0000,  /* no menu */
@@ -80,7 +80,7 @@ static const WORD gRc_ABOUT_DLG[] __attribute__((aligned(4))) = {
 /* DIALOG DIALOG_GAMESPEEDSETUP: DLGTEMPLATE and DWORD-aligned DLGITEMTEMPLATEs (style, extended style, x, y, cx, cy,
    id, class (0xffff + atom: 0x80 Button, 0x81 Edit, 0x82 Static, 0x83 ListBox, 0x85 ComboBox),
    text, 0 bytes of creation data), texts in UTF-16 as the original's (see the .rc) */
-static const WORD gRc_DIALOG_GAMESPEEDSETUP[] __attribute__((aligned(4))) = {
+static const WORD gwRc_DIALOG_GAMESPEEDSETUP[] __attribute__((aligned(4))) = {
     0x00c0, 0x80c8, 0x0000, 0x0000,  /* DLGTEMPLATE: style 0x80C800C0, no extended style */
     0x0019, 0x0000, 0x0000, 0x00b6, 0x010a,  /* 25 controls; x, y, cx, cy */
     0x0000,  /* no menu */
@@ -130,7 +130,7 @@ static const WORD gRc_DIALOG_GAMESPEEDSETUP[] __attribute__((aligned(4))) = {
 /* DIALOG DIALOG_GAMESPEEDSETUP2: DLGTEMPLATE and DWORD-aligned DLGITEMTEMPLATEs (style, extended style, x, y, cx, cy,
    id, class (0xffff + atom: 0x80 Button, 0x81 Edit, 0x82 Static, 0x83 ListBox, 0x85 ComboBox),
    text, 0 bytes of creation data), texts in UTF-16 as the original's (see the .rc) */
-static const WORD gRc_DIALOG_GAMESPEEDSETUP2[] __attribute__((aligned(4))) = {
+static const WORD gwRc_DIALOG_GAMESPEEDSETUP2[] __attribute__((aligned(4))) = {
     0x00c0, 0x80c8, 0x0000, 0x0000,  /* DLGTEMPLATE: style 0x80C800C0, no extended style */
     0x0012, 0x0000, 0x0000, 0x00b6, 0x010a,  /* 18 controls; x, y, cx, cy */
     0x0000,  /* no menu */
@@ -167,7 +167,7 @@ static const WORD gRc_DIALOG_GAMESPEEDSETUP2[] __attribute__((aligned(4))) = {
 /* DIALOG DIALOG_SETUP_JOYSTICK: DLGTEMPLATE and DWORD-aligned DLGITEMTEMPLATEs (style, extended style, x, y, cx, cy,
    id, class (0xffff + atom: 0x80 Button, 0x81 Edit, 0x82 Static, 0x83 ListBox, 0x85 ComboBox),
    text, 0 bytes of creation data), texts in UTF-16 as the original's (see the .rc) */
-static const WORD gRc_DIALOG_SETUP_JOYSTICK[] __attribute__((aligned(4))) = {
+static const WORD gwRc_DIALOG_SETUP_JOYSTICK[] __attribute__((aligned(4))) = {
     0x00c0, 0x80c8, 0x0000, 0x0000,  /* DLGTEMPLATE: style 0x80C800C0, no extended style */
     0x0029, 0x0000, 0x0000, 0x0143, 0x00c0,  /* 41 controls; x, y, cx, cy */
     0x0000,  /* no menu */
@@ -244,7 +244,7 @@ static const WORD gRc_DIALOG_SETUP_JOYSTICK[] __attribute__((aligned(4))) = {
 /* DIALOG DIALOG_SETUP_KEYBOARD: DLGTEMPLATE and DWORD-aligned DLGITEMTEMPLATEs (style, extended style, x, y, cx, cy,
    id, class (0xffff + atom: 0x80 Button, 0x81 Edit, 0x82 Static, 0x83 ListBox, 0x85 ComboBox),
    text, 0 bytes of creation data), texts in UTF-16 as the original's (see the .rc) */
-static const WORD gRc_DIALOG_SETUP_KEYBOARD[] __attribute__((aligned(4))) = {
+static const WORD gwRc_DIALOG_SETUP_KEYBOARD[] __attribute__((aligned(4))) = {
     0x00c0, 0x80c8, 0x0000, 0x0000,  /* DLGTEMPLATE: style 0x80C800C0, no extended style */
     0x0031, 0x0000, 0x0000, 0x0157, 0x00c0,  /* 49 controls; x, y, cx, cy */
     0x0000,  /* no menu */
@@ -337,7 +337,7 @@ static const WORD gRc_DIALOG_SETUP_KEYBOARD[] __attribute__((aligned(4))) = {
 /* DIALOG 101: DLGTEMPLATE and DWORD-aligned DLGITEMTEMPLATEs (style, extended style, x, y, cx, cy,
    id, class (0xffff + atom: 0x80 Button, 0x81 Edit, 0x82 Static, 0x83 ListBox, 0x85 ComboBox),
    text, 0 bytes of creation data), texts in UTF-16 as the original's (see the .rc) */
-static const WORD gRc_101[] __attribute__((aligned(4))) = {
+static const WORD gwRc_101[] __attribute__((aligned(4))) = {
     0x00c0, 0x80c8, 0x0000, 0x0000,  /* DLGTEMPLATE: style 0x80C800C0, no extended style */
     0x0009, 0x0000, 0x0000, 0x0096, 0x0112,  /* 9 controls; x, y, cx, cy */
     0x0000,  /* no menu */
@@ -360,26 +360,28 @@ static const WORD gRc_101[] __attribute__((aligned(4))) = {
     0x0080, 0x5081, 0x0000, 0x0000, 0x0008, 0x0010, 0x0088, 0x0010, 0x03f1, 0xffff, 0x0081, 0x0000, 0x0000,  /* CONTROL "", 1009, "Edit", 0x50810080, 8, 16, 136, 16 */
 };
 
+/* one entry of the resource table */
 typedef struct kgtEmbeddedResource {
     LPCSTR szType;      /* RT_BITMAP, RT_ICON (here: a whole .ico file), RT_MENU or RT_DIALOG */
     LPCSTR szName;      /* name as in the .rc (compared without case), or MAKEINTRESOURCE(id) */
-    const void *pData;
-    DWORD dwSize;
+    const void *pData;  /* the resource data, as LockResource would return it */
+    DWORD dwSize;       /* its size in bytes, as SizeofResource would return it */
 } kgtEmbeddedResource;
 
-static const kgtEmbeddedResource gEmbeddedResources[] = {
-    { RT_BITMAP, "RC_BMP_01", gRc_RC_BMP_01 + 2 + sizeof(BITMAPFILEHEADER), sizeof(gRc_RC_BMP_01) - 2 - sizeof(BITMAPFILEHEADER) },
-    { RT_BITMAP, "RC_BMP_02", gRc_RC_BMP_02 + 2 + sizeof(BITMAPFILEHEADER), sizeof(gRc_RC_BMP_02) - 2 - sizeof(BITMAPFILEHEADER) },
-    { RT_BITMAP, "RC_BMP_03", gRc_RC_BMP_03 + 2 + sizeof(BITMAPFILEHEADER), sizeof(gRc_RC_BMP_03) - 2 - sizeof(BITMAPFILEHEADER) },
-    { RT_BITMAP, "RC_BMP_TEXT", gRc_RC_BMP_TEXT + 2 + sizeof(BITMAPFILEHEADER), sizeof(gRc_RC_BMP_TEXT) - 2 - sizeof(BITMAPFILEHEADER) },
-    { RT_ICON, "EXE_ICO", gRc_EXE_ICO, sizeof(gRc_EXE_ICO) },
-    { RT_MENU, "CUPID_MENU", gRc_CUPID_MENU, sizeof(gRc_CUPID_MENU) },
-    { RT_DIALOG, "ABOUT_DLG", gRc_ABOUT_DLG, sizeof(gRc_ABOUT_DLG) },
-    { RT_DIALOG, "DIALOG_GAMESPEEDSETUP", gRc_DIALOG_GAMESPEEDSETUP, sizeof(gRc_DIALOG_GAMESPEEDSETUP) },
-    { RT_DIALOG, "DIALOG_GAMESPEEDSETUP2", gRc_DIALOG_GAMESPEEDSETUP2, sizeof(gRc_DIALOG_GAMESPEEDSETUP2) },
-    { RT_DIALOG, "DIALOG_SETUP_JOYSTICK", gRc_DIALOG_SETUP_JOYSTICK, sizeof(gRc_DIALOG_SETUP_JOYSTICK) },
-    { RT_DIALOG, "DIALOG_SETUP_KEYBOARD", gRc_DIALOG_SETUP_KEYBOARD, sizeof(gRc_DIALOG_SETUP_KEYBOARD) },
-    { RT_DIALOG, MAKEINTRESOURCEA(101), gRc_101, sizeof(gRc_101) },
+/* all resources of the .rc except VERSIONINFO */
+static const kgtEmbeddedResource gkgtEmbeddedResources[] = {
+    { RT_BITMAP, "RC_BMP_01", gcRc_RC_BMP_01 + 2 + sizeof(BITMAPFILEHEADER), sizeof(gcRc_RC_BMP_01) - 2 - sizeof(BITMAPFILEHEADER) },
+    { RT_BITMAP, "RC_BMP_02", gcRc_RC_BMP_02 + 2 + sizeof(BITMAPFILEHEADER), sizeof(gcRc_RC_BMP_02) - 2 - sizeof(BITMAPFILEHEADER) },
+    { RT_BITMAP, "RC_BMP_03", gcRc_RC_BMP_03 + 2 + sizeof(BITMAPFILEHEADER), sizeof(gcRc_RC_BMP_03) - 2 - sizeof(BITMAPFILEHEADER) },
+    { RT_BITMAP, "RC_BMP_TEXT", gcRc_RC_BMP_TEXT + 2 + sizeof(BITMAPFILEHEADER), sizeof(gcRc_RC_BMP_TEXT) - 2 - sizeof(BITMAPFILEHEADER) },
+    { RT_ICON, "EXE_ICO", gcRc_EXE_ICO, sizeof(gcRc_EXE_ICO) },
+    { RT_MENU, "CUPID_MENU", gwRc_CUPID_MENU, sizeof(gwRc_CUPID_MENU) },
+    { RT_DIALOG, "ABOUT_DLG", gwRc_ABOUT_DLG, sizeof(gwRc_ABOUT_DLG) },
+    { RT_DIALOG, "DIALOG_GAMESPEEDSETUP", gwRc_DIALOG_GAMESPEEDSETUP, sizeof(gwRc_DIALOG_GAMESPEEDSETUP) },
+    { RT_DIALOG, "DIALOG_GAMESPEEDSETUP2", gwRc_DIALOG_GAMESPEEDSETUP2, sizeof(gwRc_DIALOG_GAMESPEEDSETUP2) },
+    { RT_DIALOG, "DIALOG_SETUP_JOYSTICK", gwRc_DIALOG_SETUP_JOYSTICK, sizeof(gwRc_DIALOG_SETUP_JOYSTICK) },
+    { RT_DIALOG, "DIALOG_SETUP_KEYBOARD", gwRc_DIALOG_SETUP_KEYBOARD, sizeof(gwRc_DIALOG_SETUP_KEYBOARD) },
+    { RT_DIALOG, MAKEINTRESOURCEA(101), gwRc_101, sizeof(gwRc_101) },
 };
 
 /*
@@ -387,13 +389,14 @@ static const kgtEmbeddedResource gEmbeddedResources[] = {
  * szName: resource name (any case) or MAKEINTRESOURCE(id); szType: RT_BITMAP, RT_ICON, RT_MENU or
  * RT_DIALOG; pdwSize: receives the size (may be NULL).
  * Returns the resource data, or NULL if there is no such resource.
+ * Globals: reads gkgtEmbeddedResources.
  */
 const void *pLockEmbeddedResource(LPCSTR szName, LPCSTR szType, DWORD *pdwSize)
 {
     int i;
 
-    for (i = 0; i < (int)(sizeof(gEmbeddedResources) / sizeof(gEmbeddedResources[0])); i++) {
-        const kgtEmbeddedResource *pRes = &gEmbeddedResources[i];
+    for (i = 0; i < (int)(sizeof(gkgtEmbeddedResources) / sizeof(gkgtEmbeddedResources[0])); i++) {
+        const kgtEmbeddedResource *pRes = &gkgtEmbeddedResources[i];
 
         if (pRes->szType != szType)
             continue;
@@ -412,37 +415,40 @@ const void *pLockEmbeddedResource(LPCSTR szName, LPCSTR szType, DWORD *pdwSize)
 
 /*
  * LoadIconA for the embedded icon: picks the image of the .ico whose size is the system's icon size
- * (else the first one) with the most colours, as LoadIcon would from the icon group.
+ * (else the first one) with the most colours, as LoadIcon would from the icon group, and creates the
+ * icon from it (resource format version 0x00030000).
  * szName: icon name.
  * Returns the icon, or NULL.
  */
 HICON hLoadEmbeddedIcon(LPCSTR szName)
 {
-    const BYTE *pIco;
-    const BYTE *pEntry;
-    const BYTE *pBest;
-    int iCount, i, cx, cy;
+    const BYTE *pIcoFile;       /* the whole .ico file */
+    const BYTE *pEntry;         /* its ICONDIRENTRY being looked at */
+    const BYTE *pBest;          /* the entry chosen so far */
+    int iImages, i, iIconWidth, iIconHeight;
 
-    pIco = pLockEmbeddedResource(szName, RT_ICON, NULL);
-    if (pIco == NULL)
+    pIcoFile = pLockEmbeddedResource(szName, RT_ICON, NULL);
+    if (pIcoFile == NULL)
         return NULL;
-    cx = GetSystemMetrics(SM_CXICON);
-    cy = GetSystemMetrics(SM_CYICON);
+    iIconWidth = GetSystemMetrics(SM_CXICON);
+    iIconHeight = GetSystemMetrics(SM_CYICON);
     /* ICONDIR: WORD reserved, WORD type (1), WORD count; ICONDIRENTRY (16 bytes): BYTE width,
        BYTE height, BYTE colours, BYTE reserved, WORD planes, WORD bits, DWORD size, DWORD offset */
-    iCount = *(const WORD *)(pIco + 4);
+    iImages = *(const WORD *)(pIcoFile + 4);
     pBest = NULL;
-    for (i = 0; i < iCount; i++) {
-        pEntry = pIco + 6 + i * 16;
+    for (i = 0; i < iImages; i++) {
+        pEntry = pIcoFile + 6 + i * 16;
+        /* the first image, replaced by one of the system size (and then by one with more bits per pixel) */
         if (pBest == NULL
-            || (pEntry[0] == cx && pEntry[1] == cy
-                && (pBest[0] != cx || pBest[1] != cy || *(const WORD *)(pEntry + 6) > *(const WORD *)(pBest + 6))))
+            || (pEntry[0] == iIconWidth && pEntry[1] == iIconHeight
+                && (pBest[0] != iIconWidth || pBest[1] != iIconHeight || *(const WORD *)(pEntry + 6) > *(const WORD *)(pBest + 6))))
             pBest = pEntry;
     }
     if (pBest == NULL)
         return NULL;
-    return CreateIconFromResourceEx((PBYTE)pIco + *(const DWORD *)(pBest + 12), *(const DWORD *)(pBest + 8),
-                                    TRUE, 0x00030000, cx, cy, LR_DEFAULTCOLOR);
+    /* the image's data (BITMAPINFOHEADER, colours, XOR and AND masks) at its offset in the file */
+    return CreateIconFromResourceEx((PBYTE)pIcoFile + *(const DWORD *)(pBest + 12), *(const DWORD *)(pBest + 8),
+                                    TRUE, 0x00030000, iIconWidth, iIconHeight, LR_DEFAULTCOLOR);
 }
 
 /*
