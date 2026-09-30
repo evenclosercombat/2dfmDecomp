@@ -1,10 +1,16 @@
 # KGT2nd_GAME
 
 C source of `KGT2nd_GAME.exe`, the game runtime of *2D Fighter Maker 2nd* (2D格闘ツクール2nd.,
-Enterbrain, 2002), that rebuilds the shipped executable byte for byte with the original toolchain:
+Enterbrain, 2002), built with the original toolchain.
+
+**This is the `nonmatching` branch: every function is compiled from C.** Six functions come out with
+slightly different register and stack-slot choices than the original, so this executable differs from the
+shipped one in those functions only (the game plays the same). The **`main`** branch has the byte-exact
+build of the original:
 
 ```
-SHA-256 287c6f39aea5265b126dff301af9e8fdf49e6edc78957eeb50aba38e6705326a  KGT2nd_GAME.exe
+SHA-256 287c6f39aea5265b126dff301af9e8fdf49e6edc78957eeb50aba38e6705326a  KGT2nd_GAME.exe  (main)
+SHA-256 e7ac09d44683c4bfba3c07bd7cbfd2a972be2103ab087aea64f28412be25d78d  KGT2nd_GAME.exe  (this branch)
 ```
 
 This repository contains only what the build needs. The decompilation work itself - matching tools,
@@ -35,8 +41,8 @@ pip install -r requirements.txt
 python build.py
 ```
 
-The result is `build/KGT2nd_GAME.exe`. The build ends by comparing its SHA-256 with the original's known
-hash and prints `MATCH: identical to the original KGT2nd_GAME.exe` (or `DIFFERENT`, exit code 1).
+The result is `build/KGT2nd_GAME.exe`. The build ends by comparing its SHA-256 with the known hash of
+this branch's build and prints `MATCH: identical to the known all-C build` (or `DIFFERENT`, exit code 1).
 `python build.py --no-verify` skips the check.
 
 What `build.py` does, in order:
@@ -48,20 +54,22 @@ What `build.py` does, in order:
 4. makes a copy of your `LINK.EXE` that uses the `qsort` of VC6's own C runtime (`tools/mklink.py`)
    and links everything in the original order,
 5. reproduces the post-link changes the original went through (`tools/postlink.py`),
-6. checks the SHA-256 of the result.
+6. checks the SHA-256 of the result against this branch's known hash.
 
-## Functions built from the original's machine code
+## Functions that differ from the original
 
 180 of the 186 C functions compile to exactly the original machine code (the assembler blitter is
-reproduced exactly as well). For the other 6, VC6 still picks slightly different registers or stack slots, so by
-default they are built from the original's machine code, with their C source next to it in an
-`#ifdef NONMATCHING` branch:
+reproduced exactly as well). The other 6 are complete, behaviour-identical C, but VC6 still picks slightly
+different registers or stack slots for them:
 
 `vjmpHandleBattleInterface` (6 instructions differ), `bReadKgtCore` (15), `vDrawCurrentEngineObject` (46),
 `vDrawKgtImage16` (59), `vBlitImageRect16` (60) and `vHandleHitboxEffects` (93).
 
-`python build.py --nonmatching` compiles them from C instead; the executable then differs from the
-original in those functions only, and the game plays the same.
+## Branches
+
+* **`main`**: the exact byte match of the original executable; those 6 functions are built from the
+  original's machine code there.
+* **`nonmatching`** (this branch): the same program with those 6 functions compiled from C.
 
 ## Layout
 
