@@ -251,12 +251,11 @@ void vFreeKgtCore(kgt_core *pCore)
  * 2 when a sound's buffer could not be allocated.  On an error what was read so far stays allocated
  * (bLoaded is still 0, so vFreeKgtCore does not free it).
  * Globals: reads giDsoundInitializedFlag, gpDirectSound; changes gpWavs.
- * NONMATCHING: compiles to slightly different register and stack-slot choices, so the default build
- * uses the original bytes; see docs/MATCHING.md, Functions that do not match yet.
+ * Built from the original's machine code: VC6 does not yet compile the C to exactly these bytes.
+ * The dead `if (0)` copy of the C body keeps the file's string literals and imported symbols in
+ * the original order; the plain C version is on the `nonmatching` branch.
  */
-/* asmfunc: begin bReadKgtCore */
-#ifndef NONMATCHING
-/* not matched yet: the original code, with the C below kept for its literals and symbols */
+/* the original machine code; the C in the dead block keeps the literals and imports */
 __declspec(naked) int bReadKgtCore(kgt_core *pCore, HANDLE hFile)
 {
     if (0) {
@@ -1274,123 +1273,6 @@ __declspec(naked) int bReadKgtCore(kgt_core *pCore, HANDLE hFile)
         _emit 0x90        ; 004039AF  nop
     }
 }
-#else
-int bReadKgtCore(kgt_core *pCore, HANDLE hFile)
-{
-    DWORD dwBytesRead;
-    int iCount;
-    int i;
-    DWORD dwSize;
-    void *pTable;       /* TODO(match): stack slot order differs from the original */
-    kgtImageHeader *pImage;
-
-    kgtSound *pSound;
-    int *piFlags, *piWidth;
-
-    dwBytesRead = 0;
-    /* the name */
-    if (!ReadFile(hFile, pCore->szName, 256, &dwBytesRead, NULL))
-        return 1;
-    /* skills: count (at most 1024) and headers */
-    if (!ReadFile(hFile, &iCount, 4, &dwBytesRead, NULL))
-        return 1;
-    if (iCount > 1024 || iCount < 0) {
-        vSpawnTaskModalWithWarning("\203A\203N\203V\203\207\203\223\220\224\222l\223\307\215\236\203G\203\211\201[");  /* アクション数値読込エラー */
-        return 1;
-    }
-    pCore->pSkillsAlloc = GlobalAlloc(GMEM_FIXED, iCount * sizeof(kgtSkillHeader));
-    if (!ReadFile(hFile, pCore->pSkillsAlloc, iCount * sizeof(kgtSkillHeader), &dwBytesRead, NULL))
-        return 1;
-    pCore->iActionsCount = iCount;
-
-    /* script steps of all skills: count (at most 0x10000) and steps */
-    if (!ReadFile(hFile, &iCount, 4, &dwBytesRead, NULL))
-        return 1;
-    if (iCount > 0x10000 || iCount < 0) {
-        vSpawnTaskModalWithWarning("\203A\203N\203V\203\207\203\223\203X\203N\203\212\203v\203g\220\224\222l\223\307\215\236\203G\203\211\201[");  /* アクションスクリプト数値読込エラー */
-        return 1;
-    }
-    pCore->pSkillScriptsAlloc = GlobalAlloc(GMEM_FIXED, iCount * sizeof(kgtSkill));
-    if (!ReadFile(hFile, pCore->pSkillScriptsAlloc, iCount * sizeof(kgtSkill), &dwBytesRead, NULL))
-        return 1;
-
-    /* images: count (at most 0x2000), then header and data of each */
-    if (!ReadFile(hFile, &iCount, 4, &dwBytesRead, NULL))
-        return 1;
-    if (iCount > 0x2000 || iCount < 0) {
-        vSpawnTaskModalWithWarning("\203C\203\201\201[\203W\220\224\222l\223\307\215\236\203G\203\211\201[");  /* イメージ数値読込エラー */
-        return 1;
-    }
-    pTable = GlobalAlloc(GMEM_FIXED, iCount * sizeof(kgtImageHeader));
-    pCore->pImageHeaders = pTable;
-    pCore->iImagesCount = iCount;
-    for (i = 0; i < iCount; i++) {
-        pImage = (kgtImageHeader *)pTable + i;
-        if (!ReadFile(hFile, pImage, sizeof(kgtImageHeader), &dwBytesRead, NULL))
-            return 1;
-        /* data size: width * height, + 0x400 for an own palette (256 x 4 bytes); a non-zero iSize (the
-           stored size) replaces it.  matching: width and flags are read through pointers so that their
-           loads stay in this order around the pAlloc store (vc6-matching-notes/matching-techniques.md) */
-        piWidth = &pImage->iWidth;
-        dwSize = pImage->iHeight * *piWidth;
-        piFlags = &pImage->iFlags;
-        pImage->pAlloc = NULL;
-        if (*piFlags & 1)
-            dwSize += 0x400;
-        if (pImage->iSize)
-            dwSize = pImage->iSize;
-        if (dwSize) {
-            pImage->pAlloc = GlobalAlloc(GMEM_FIXED, dwSize);
-            if (!ReadFile(hFile, pImage->pAlloc, dwSize, &dwBytesRead, NULL))
-                return 1;
-        }
-    }
-
-    /* the 8 palettes of 0x108 colours (B, G, R, 1), one 0x2100-byte block */
-    if (!ReadFile(hFile, pCore->kgtPalettes, 0x2100, &dwBytesRead, NULL))
-        return 1;
-    /* sounds: count (at most 256), then header and data of each */
-    if (!ReadFile(hFile, &iCount, 4, &dwBytesRead, NULL))
-        return 1;
-    /* (the message below says palette count; it is the sound count) */
-    if (iCount > 256 || iCount < 0) {
-        vSpawnTaskModalWithWarning("\203p\203\214\203b\203g\220\224\222l\223\307\215\236\203G\203\211\201[");  /* パレット数値読込エラー */
-        return 1;
-    }
-    pTable = GlobalAlloc(GMEM_FIXED, iCount * sizeof(kgtSound));
-    pCore->pkgtSounds = pTable;
-    pCore->iSoundsCount = iCount;
-    for (i = 0; i < iCount; i++) {
-        pSound = (kgtSound *)pTable + i;
-        if (!ReadFile(hFile, pSound, sizeof(kgtSound), &dwBytesRead, NULL))
-            return 1;
-        dwSize = pSound->iSize;
-        if (dwSize) {
-            pSound->pAlloc = GlobalAlloc(GMEM_FIXED, dwSize);
-            /* the allocation failed (GlobalSize(NULL) is 0) */
-            if (GlobalSize(pSound->pAlloc) < dwSize)
-                return 2;
-            if (!ReadFile(hFile, pSound->pAlloc, dwSize, &dwBytesRead, NULL))
-                return 1;
-            if (giDsoundInitializedFlag) {
-                /* a wave: build its DirectSound buffer now and drop the file data (pWav overlays iSize) */
-                switch (pSound->cFlags & 0xf) {
-                case 1:
-                    pSound->pWav = kgtwBuildWav(gpDirectSound, pSound->pAlloc, 1);
-                    gpWavs[pCore->iWavBank][i] = pSound->pWav;
-                    { void **ppAlloc = &pSound->pAlloc; GlobalFree(*ppAlloc); }  /* matching: freeing through the field's address makes VC6 re-read pAlloc */
-                    pSound->pAlloc = NULL;
-                    break;
-                }
-            }
-        }
-    }
-    /* the closing DWORD: 0 = success, 1 = read error */
-    { DWORD dwTail; return !ReadFile(hFile, &dwTail, 4, &dwBytesRead, NULL); }
-    ReadFile(hFile, &pTable, 4, &dwBytesRead, NULL);  /* matching: unreachable, left from the matching attempts (it takes pTable's address) */
-}
-#endif
-/* asmfunc: end bReadKgtCore */
 
 /* The loaded part of a character: everything up to the runtime state (see iClearCharacterFile). */
 #define KGT_CHARACTER_FILE_SIZE 0xdeed

@@ -1,9 +1,8 @@
 """Build KGT2nd_GAME.exe from source and check that it is identical to the original (by SHA-256).
 
-usage: python build.py [--no-verify] [--nonmatching]
+usage: python build.py [--no-verify]
 
   --no-verify    skip the SHA-256 check
-  --nonmatching  compile the C versions of the functions that do not match yet (see README.md)
 
 Steps (all output goes to build/):
   1. RC 5.00 -> kgt2nd.res (images from rsrc/assets/), then tools/fix_res.py
@@ -83,7 +82,7 @@ def main(argv):
             sys.exit("missing source: %s" % src)
         obj = os.path.join(OBJ, os.path.splitext(os.path.basename(src))[0] + ".obj")
         print("== cl", src)
-        rc, out = toolchain.cl(path, obj, ["/DNONMATCHING"] if "--nonmatching" in argv else [])
+        rc, out = toolchain.cl(path, obj)
         lines = [l for l in out.splitlines() if l.strip() and l.strip() != os.path.basename(src)]
         if lines:
             print("\n".join(lines))
@@ -112,18 +111,15 @@ def main(argv):
     print("built", final)
     if "--no-verify" in argv:
         return 0
-    return check_sha256(final, "--nonmatching" in argv)
+    return check_sha256(final)
 
 
-def check_sha256(path, nonmatching=False):
+def check_sha256(path):
     """The only check the build makes: the SHA-256 of the result."""
     h = hashlib.sha256(open(path, "rb").read()).hexdigest()
     print("sha256", h)
     if h == EXPECTED_SHA256:
         print("MATCH: identical to the original KGT2nd_GAME.exe")
-        return 0
-    if nonmatching:
-        print("differs from the original, as expected with --nonmatching")
         return 0
     print("DIFFERENT from the original KGT2nd_GAME.exe (expected sha256 %s)" % EXPECTED_SHA256)
     print("to see where: tools/verify.py of the development repository (kgt2nd_decomp) compares a build")

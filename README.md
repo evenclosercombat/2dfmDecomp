@@ -53,15 +53,20 @@ What `build.py` does, in order:
 ## Functions built from the original's machine code
 
 180 of the 186 C functions compile to exactly the original machine code (the assembler blitter is
-reproduced exactly as well). For the other 6, VC6 still picks slightly different registers or stack slots, so by
-default they are built from the original's machine code, with their C source next to it in an
-`#ifdef NONMATCHING` branch:
+reproduced exactly as well). For the other 6, VC6 still picks slightly different registers or stack slots, so on
+this branch they are built from the original's machine code (`__declspec(naked)` functions with the bytes
+as `_emit` data, plus a dead copy of the C body that keeps each file's string literals and imports in the
+original order):
 
 `vjmpHandleBattleInterface` (6 instructions differ), `bReadKgtCore` (15), `vDrawCurrentEngineObject` (46),
 `vDrawKgtImage16` (59), `vBlitImageRect16` (60) and `vHandleHitboxEffects` (93).
 
-`python build.py --nonmatching` compiles them from C instead; the executable then differs from the
-original in those functions only, and the game plays the same.
+## Branches
+
+* **`main`** (this branch): the exact byte match of the original executable.
+* **`nonmatching`**: the same program with those 6 functions compiled from their C source instead. Its
+  executable differs from the original in those functions only and plays the same; its build checks
+  against the known hash of that build instead of the original's.
 
 ## Layout
 
