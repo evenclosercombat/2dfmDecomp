@@ -25,12 +25,12 @@ int iOnlineEnumSessions(void);
 void vOnlineAnnouncePlayerAndSetTitle(char *szSessionName);
 int iOnlineHostSession(void);
 int iOnlineJoinSession(int iSession);
-BOOL CALLBACK iOnlineDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK iOnlineDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void vSpawnOnlineDialog(HINSTANCE hInstance, HWND hWnd);
 void vGetLocalHostIpAddress(void);
 
 /* main.c - memory, sound, KGT file loading */
-void vMemzero(void *pAddress, int iSize);
+void vMemzero(void *pAddress, size_t iSize);
 void vSetupDsound(void);
 void vReleaseDsound(void);
 void vStopAndResetAllWavs(void);

@@ -1,4 +1,23 @@
-/* Generated from the Ghidra database (bootstrap); hand-maintained from here on. */
+/* Generated from the Ghidra database (bootstrap); hand-maintained from here on.
+ *
+ * 64-bit port (win64 branch): the offsets in the member comments are those of the original 32-bit
+ * layout, which is also the layout of the data files.  Structures that are only in memory keep their
+ * pointer members as real pointers, so in an x86-64 build every member after a pointer moves by 4
+ * bytes per pointer before it.  The records that are read from the files with pointer-sized slots in
+ * them (kgtImageHeader, kgtSound) have separate file layouts (kgtImageHeaderFile, kgtSoundFile) that
+ * the loader converts; all other file reads go member by member into pointer-free parts, so they are
+ * the same in both builds.  The size checks at the end state each structure's size as its 32-bit
+ * size plus 4 bytes per pointer (KGT_PTR_GROWTH), i.e. they hold for the i686 and the x86-64 build.
+ */
+#ifndef KGT_TYPES_H
+#define KGT_TYPES_H
+
+#include <stddef.h>     /* offsetof */
+#include <stdint.h>     /* intptr_t, uint32_t */
+
+/* bytes a pointer (or pointer-sized integer) is larger than in the original 32-bit program */
+#define KGT_PTR_GROWTH (sizeof(void *) - 4)
+
 #pragma pack(push, 1)
 
 typedef struct kgtPallette kgtPallette;
@@ -44,7 +63,7 @@ struct kgtPallette {   /* size 0x4: one palette colour as stored in the KGT file
     char cUnk03;                                                   /* 0x0003 */ /* always 1 in the files */
 };
 
-struct kgt_core {   /* size 0x2234: the part common to all KGT files (system, character, demo, stage) as loaded: name, skills, script steps, images, palettes, sounds */
+struct kgt_core {   /* size 0x2234 (+ pointer growth): the part common to all KGT files (system, character, demo, stage) as loaded: name, skills, script steps, images, palettes, sounds */
     BYTE cSignature[0x10];                                         /* 0x0000 */ /* the 16-byte file signature ("2DKGT2G" / "2DKGT2K", gszFileSignatures), read by the iOpen*File loaders before bReadKgtCore and not checked */
     char szName[256];                                              /* 0x0010 */ /* name: game title (system file), character name (shown in netplay), demo/stage name */
     kgtSkillHeader * pSkillsAlloc;                                 /* 0x0110 */ /* skills, iActionsCount entries */
@@ -83,7 +102,7 @@ struct kgtSkill {   /* size 0x10: one 16-byte script step; battle.c's kgtScriptS
     BYTE pad_0007[0x9];                                            /* 0x0007 */ /* rest of the step, depends on the command */
 };
 
-struct kgtImageHeader {   /* size 0x14: one image of a KGT file */
+struct kgtImageHeader {   /* size 0x14 (+ pointer growth): one image of a KGT file as loaded (the file record is kgtImageHeaderFile) */
     int * pAlloc;                                                  /* 0x0000 */ /* pixel data (8-bit, possibly compressed) */
     int iWidth;                                                    /* 0x0004 */ /* width in pixels: the row length (stride) of the 8-bit pixels */
     int iHeight;                                                   /* 0x0008 */ /* height in pixels: the number of rows */
@@ -91,7 +110,17 @@ struct kgtImageHeader {   /* size 0x14: one image of a KGT file */
     int iSize;                                                     /* 0x0010 */ /* size of the pixel data in bytes */
 };
 
-struct kgtSound {   /* size 0x2a: one sound of a KGT file (wave, MIDI or CD track) */
+/* the file record of an image header (0x14 bytes): dwAlloc is the pointer slot of the original,
+   meaningless in the file; bReadKgtCore converts it to a kgtImageHeader */
+typedef struct kgtImageHeaderFile {
+    uint32_t dwAlloc;                                              /* 0x0000 */ /* kgtImageHeader.pAlloc */
+    int iWidth;                                                    /* 0x0004 */
+    int iHeight;                                                   /* 0x0008 */
+    int iFlags;                                                    /* 0x000c */
+    int iSize;                                                     /* 0x0010 */
+} kgtImageHeaderFile;
+
+struct kgtSound {   /* size 0x2a (+ pointer growth): one sound of a KGT file (wave, MIDI or CD track) as loaded (the file record is kgtSoundFile) */
     void * pAlloc;                                                 /* 0x0000 */ /* sound data read from the file */
     char szName[32];                                               /* 0x0004 */ /* sound name */
     union {
@@ -101,6 +130,16 @@ struct kgtSound {   /* size 0x2a: one sound of a KGT file (wave, MIDI or CD trac
     BYTE cFlags;                                                   /* 0x0028 */ /* low nibble: 0 stop all sounds, 1 wave, 2 MIDI, 3 CD audio; 0x10 loop */
     BYTE cCdTrack;                                                 /* 0x0029 */ /* CD audio track */
 };
+
+/* the file record of a sound header (0x2a bytes); dwAlloc is the original's pointer slot (kept as it
+   is read, as the original does), dwSize the slot that becomes kgtSound.pWav */
+typedef struct kgtSoundFile {
+    uint32_t dwAlloc;                                              /* 0x0000 */ /* kgtSound.pAlloc */
+    char szName[32];                                               /* 0x0004 */
+    DWORD iSize;                                                   /* 0x0024 */ /* kgtSound.iSize / pWav */
+    BYTE cFlags;                                                   /* 0x0028 */
+    BYTE cCdTrack;                                                 /* 0x0029 */
+} kgtSoundFile;
 
 struct kgtCharacterCPUCommandSkillFull {   /* size 0x7: one step of a CPU command (kgtCpuCommand.kgtSteps) */
     BYTE pad_0000[0x1];                                            /* 0x0000 */ /* unknown */
@@ -233,7 +272,7 @@ enum kgtEngineObjectTypes {   /* kgtEngineObject.iObjectType: which file's skill
     ENGINE_OBJECT_TYPES_SIGNED = -1         /* (see kgtJumptableEndpoints) */
 };
 
-struct kgtEngineObject {   /* size 0x17e: one engine object (gkgtEngineObjects[1024]): players, effects, UI parts and the game-state controllers; iJumpIdx selects its handler */
+struct kgtEngineObject {   /* size 0x17e (+ pointer growth; only in memory): one engine object (gkgtEngineObjects[1024]): players, effects, UI parts and the game-state controllers; iJumpIdx selects its handler */
     kgtJumptableEndpoints iJumpIdx;                                /* 0x0000 */ /* handler (gpfnGamestateJumptable index); EMPTY = free slot */
     int iDepth;                                                    /* 0x0004 */ /* draw layer (gkgtDrawLayers index, 0-127; players 0x50/0x46 by line) */
     int iPosX;                                                     /* 0x0008 */ /* x position, 16.16 fixed point (UI objects: screen x) */
@@ -292,22 +331,29 @@ struct kgtEngineObject {   /* size 0x17e: one engine object (gkgtEngineObjects[1
     short shVarP;                                                  /* 0x014f */ /* object variable P */
     BYTE cAfterImageIdx;                                           /* 0x0151 */ /* after-image trail in use: gAfterImageTrails[cAfterImageIdx - 1], 0 = none */
     int iProcessStep;                                              /* 0x0152 */ /* state of the handler (game-state objects use 0, 1, 100, 200, ...) */
-    int iPlayerIdx;                                                /* 0x0156 */ /* player slot (gkgtLoadedCharacter index) whose file it uses; game-state objects use it as a counter or value */
-    kgtEngineObjectTypes iObjectType;                              /* 0x015a */ /* which file's skills it runs; UI objects also keep an object pointer in it (vjmpHandleBattleInterface) */
+    /* The next members are also work slots of the game-state handlers, which keep either numbers or
+       object pointers in them (an int of the 32-bit original); they are pointer-sized integers
+       (intptr_t) so that both fit, and read as int where they hold numbers. */
+    intptr_t iPlayerIdx;                                           /* 0x0156 */ /* player slot (gkgtLoadedCharacter index) whose file it uses; game-state objects use it as a counter or value, or an object pointer (vjmpHandleBattleInterface) */
+    intptr_t iObjectType;                                          /* 0x015a */ /* which file's skills it runs (kgtEngineObjectTypes); UI objects also keep an object pointer in it (vjmpHandleBattleInterface) */
     union {
-        kgtEngineObject * pWork015E;                               /* 0x015e */ /* handler work slot: an object (portrait, cursor, digit) or, cast to int, the combo count pointer */
+        kgtEngineObject * pWork015E;                               /* 0x015e */ /* handler work slot: an object (portrait, cursor, digit) or the combo count pointer */
+        intptr_t iWork015E;                                        /* 0x015e */ /* the same slot holding a number (countdown, selection) */
         int iStateFlags;                                           /* 0x015e */ /* players (battle.c OBJ_FLAGS): bits 0-1 stance (0 stand, 1 crouch, 2 air); bits 2-3 action state (0 free, 4 in an action, 8 in a hit reaction, 0xc guarding); 0x10 this attack has already hit (set on a hit, blocks further hits; cleared by FA flag 2, at the end of the skill and on a cancel) */
     };
-    kgtEngineObject * pWork0162;                                   /* 0x0162 */ /* handler work slot: an object (portrait, digit) */
-    int iWork0166;                                                 /* 0x0166 */ /* handler work slot: timer ones digit shown, 1P cursor object, stock digit object */
-    int iWork016A;                                                 /* 0x016a */ /* handler work slot: timer tens digit shown, 2P cursor object, 1P stock count shown */
-    int iWork016E;                                                 /* 0x016e */ /* handler work slot: timer hundreds digit shown, stock digit object */
-    int iWork0172;                                                 /* 0x0172 */ /* handler work slot: 2P stock count shown */
-    int iWork0176;                                                 /* 0x0176 */ /* handler work slot: timer digit spacing (16.16), target face object */
+    union {
+        kgtEngineObject * pWork0162;                               /* 0x0162 */ /* handler work slot: an object (portrait, digit) */
+        intptr_t iWork0162;                                        /* 0x0162 */ /* the same slot holding a number (wins shown) */
+    };
+    intptr_t iWork0166;                                            /* 0x0166 */ /* handler work slot: timer ones digit shown, 1P cursor object, stock digit object */
+    intptr_t iWork016A;                                            /* 0x016a */ /* handler work slot: timer tens digit shown, 2P cursor object, 1P stock count shown */
+    intptr_t iWork016E;                                            /* 0x016e */ /* handler work slot: timer hundreds digit shown, stock digit object */
+    intptr_t iWork0172;                                            /* 0x0172 */ /* handler work slot: 2P stock count shown */
+    intptr_t iWork0176;                                            /* 0x0176 */ /* handler work slot: timer digit spacing (16.16), target face object */
     kgtEngineObject * pParent;                                     /* 0x017a */ /* object that created it */
 };
 
-struct kgt_character_struct {   /* size 0xe03f: a loaded character file followed by the runtime battle state of its player slot (gkgtLoadedCharacter[8]) */
+struct kgt_character_struct {   /* size 0xe03f (+ pointer growth): a loaded character file followed by the runtime battle state of its player slot (gkgtLoadedCharacter[8]); the file part (up to iWins) is read member by member */
     kgt_core kgtCore;                                              /* 0x0000 */ /* the file's common part */
     DWORD dpidOnline;                                              /* 0x2234 */ /* netplay: DirectPlay id using this slot */
     int iOnlineState;                                              /* 0x2238 */ /* slot in use: 0 free, 1 active, 2 remote peer joined */
@@ -387,7 +433,7 @@ struct kgt_character_struct {   /* size 0xe03f: a loaded character file followed
     int iLosses;                                                   /* 0xdef1 */ /* set to 1 when knocked out (L: in the hit-judge display) */
     kgtEngineObject * pkgtoSelf;                                   /* 0xdef5 */ /* the player's engine object */
     kgtEngineObject * pLastOpponent;                               /* 0xdef9 */ /* object last in hit/guard contact with it: the last attacker, used for story win points */
-    int iLastAttacker;                                             /* 0xdefd */ /* kgtEngineObject * (as int) that last hit it; used to push it back at the screen edge */
+    kgtEngineObject * pLastAttacker;                               /* 0xdefd */ /* object that last hit it (an int in the original); used to push it back at the screen edge */
     int iComboCount;                                               /* 0xdf01 */ /* hits taken in the current combo (damage reduction, combo counter) */
     int iHealth;                                                   /* 0xdf05 */ /* life */
     int iLifePermille;                                             /* 0xdf09 */ /* life in 1/1000 of iLifeMax, computed at time over to find the winner */
@@ -515,7 +561,7 @@ struct kgtSystemHitJunction {   /* size 0x24: one hit junction (hit reaction typ
     BYTE pad_0021[0x3];                                            /* 0x0021 */ /* unknown */
 };
 
-struct kgtSystem {   /* size 0x124bc: the loaded system file (gkgtKgtSystem): game settings, name lists and the skills of the system images */
+struct kgtSystem {   /* size 0x124bc (+ pointer growth of the kgt_core): the loaded system file (gkgtKgtSystem): game settings, name lists and the skills of the system images */
     kgt_core kgtCore;                                              /* 0x0000 */ /* the file's common part */
     char szCharacterNames[50][256];                                /* 0x2234 */ /* character file names (without extension) */
     kgtSystemHitJunction kgtHitJunctions[200];                     /* 0x5434 */ /* hit junction (reaction) types */
@@ -725,7 +771,7 @@ struct kgtGameState {   /* size 0x1ac: state of the current game (gkgtGameState)
     DWORD dwTargetPlayerTimer;                                     /* 0x01a8 */ /* frames until iTargetPlayer is reset (1000 after a hit) */
 };
 
-struct kgt_demo_file {   /* size 0x2669: a loaded demo file (gkgtLoadedDemo) */
+struct kgt_demo_file {   /* size 0x2669 (+ pointer growth of the kgt_core): a loaded demo file (gkgtLoadedDemo) */
     kgt_core kgtCore;                                              /* 0x0000 */ /* the file's common part */
     union {
         char cBgmSelection;                                        /* 0x2234 */ /* low byte of wBgmSelection */
@@ -738,7 +784,7 @@ struct kgt_demo_file {   /* size 0x2669: a loaded demo file (gkgtLoadedDemo) */
     BYTE pad_263d[0x2c];                                           /* 0x263d */ /* size per vMemzero(&..., sizeof) */
 };
 
-struct kgt_stage {   /* size 0x2691: a loaded stage file (gkgtLoadedStage) */
+struct kgt_stage {   /* size 0x2691 (+ pointer growth of the kgt_core): a loaded stage file (gkgtLoadedStage) */
     kgt_core kgtCore;                                              /* 0x0000 */ /* the file's common part */
     union {
         char cBgmSelection;                                        /* 0x2234 */ /* low byte of wBgmSelection */
@@ -755,7 +801,7 @@ struct online_tcp_struct {   /* size 0x140: unused Ghidra structure, probably a 
 };
 
 /* SNDOBJ from the DirectX SDK sample dsutil.c: a wave with iAlloc duplicated buffers */
-struct kgtWav {   /* size 0x10 + 4 * iAlloc: a loaded wave (dsutil.c) */
+struct kgtWav {   /* size 0x10 + 4 * iAlloc (+ pointer growth; allocated with offsetof(kgtWav, pBuffers)): a loaded wave (dsutil.c) */
     BYTE * pbWaveData;                                             /* 0x0000 */ /* wave data (SDK name) */
     DWORD cbWaveSize;                                              /* 0x0004 */ /* wave data size in bytes (SDK name) */
     int iAlloc;                                                    /* 0x0008 */ /* number of buffers */
@@ -780,7 +826,7 @@ struct wavSoundFile {   /* size 0x30: RIFF WAVE file header (unused Ghidra struc
     BYTE * pSampledData;                                           /* 0x002c */ /* samples */
 };
 
-struct kgtBMPINFO {   /* size 0x14: an external bitmap (text.bmp, 1.bmp.., stage bg_*.bmp) converted for drawing (gkgtBitmaps) */
+struct kgtBMPINFO {   /* size 0x14 (+ pointer growth): an external bitmap (text.bmp, 1.bmp.., stage bg_*.bmp) converted for drawing (gkgtBitmaps) */
     void * pData;                                                  /* 0x0000 */ /* GlobalAlloc'ed data: RGB555 palette of iColorsUsed + 1 entries, then the 8-bit pixels (16-bit images: pixels only) */
     int iWidth;                                                    /* 0x0004 */ /* width in pixels (rounded up to a multiple of 4 or 8) */
     int iHeight;                                                   /* 0x0008 */ /* height in pixels */
@@ -1012,17 +1058,32 @@ struct kgt_debug_a {   /* size 0x870: the on-screen debug message log (gkgtDebug
     UNK_0x48_struct kgtLines[30];                                  /* 0x0000 */ /* [0] = newest */
 };
 
-struct unk_0x650_struct {   /* size 0x650: an after-image trail (script command AI): header + 100 captured frames, 16 bytes each */
-    union {
-        struct {
-            int bInUse;                                            /* 0x0000 */ /* trail in use */
-            int iPos;                                              /* 0x0004 */ /* next frame slot (0..99) */
-            kgtSkill * pStep;                                      /* 0x0008 */ /* the AI script step (length, interval) */
-            int iTimer;                                            /* 0x000c */ /* frames until the next capture */
-        };
-        int aiData[404];                                           /* 0x0000 */ /* frame n (0..99) = aiData[(n + 1) * 4 + 0..3]: x, y, flags, image step */
-    };
+/* one captured frame of an after-image trail (16 bytes in the original) */
+typedef struct kgtTrailFrame {
+    int iX;                                                        /* 0x0000 */ /* x (16.16) */
+    int iY;                                                        /* 0x0004 */ /* y (16.16) */
+    int iFlags;                                                    /* 0x0008 */ /* bit 0 image flip (step flag 0x4000), bit 2 mirrored (iPlayerLookingRight * 4) */
+    kgtSkill * pImage;                                             /* 0x000c */ /* the image step shown (kgtSkillImageStep) */
+} kgtTrailFrame;
+
+struct unk_0x650_struct {   /* size 0x650 (+ pointer growth): an after-image trail (script command AI): header + 100 captured frames (the original's aiData[404]: frame n at aiData[(n + 1) * 4]) */
+    int bInUse;                                                    /* 0x0000 */ /* trail in use */
+    int iPos;                                                      /* 0x0004 */ /* next frame slot (0..99) */
+    kgtSkill * pStep;                                              /* 0x0008 */ /* the AI script step: [3] frames shown, [4] capture interval, [5] blend type, [6] colour mode, [7..10] r g b alpha */
+    int iTimer;                                                    /* 0x000c */ /* frames until the next capture */
+    kgtTrailFrame kgtFrames[100];                                  /* 0x0010 */ /* the captured frames (ring buffer) */
 };
+
+/* draw list rebuilt every frame by vProcessEngineObjects (main.c): one list per layer (iDepth) */
+typedef struct kgtDrawNode {   /* size 0x8 (+ pointer growth) */
+    kgtEngineObject * pObj;                                        /* 0x0000 */ /* the object */
+    struct kgtDrawNode * pNext;                                    /* 0x0004 */ /* next object of the same layer, NULL at the end */
+} kgtDrawNode;
+
+typedef struct kgtDrawLayer {   /* size 0x8 (+ pointer growth) */
+    kgtDrawNode * pHead;                                           /* 0x0000 */ /* first node, valid only when pTail is not NULL */
+    kgtDrawNode * pTail;                                           /* 0x0004 */ /* last node; NULL = empty layer */
+} kgtDrawLayer;
 
 struct POSS_VTABLE_GAME_STATE {   /* size 0x48: Ghidra view of gpfnGamestateJumptable (engine.c): one handler per kgtJumptableEndpoints value */
     BYTE * pfnEmpty;                                               /* 0x0000 */ /* handler of iJumpIdx 0 */
@@ -1047,34 +1108,54 @@ struct POSS_VTABLE_GAME_STATE {   /* size 0x48: Ghidra view of gpfnGamestateJump
 
 #pragma pack(pop)
 
-typedef char assert_size_kgtPallette[(sizeof(kgtPallette) == 0x4) ? 1 : -1];
-typedef char assert_size_kgt_core[(sizeof(kgt_core) == 0x2234) ? 1 : -1];
-typedef char assert_size_kgtSkillHeader[(sizeof(kgtSkillHeader) == 0x27) ? 1 : -1];
-typedef char assert_size_kgtSkill[(sizeof(kgtSkill) == 0x10) ? 1 : -1];
-typedef char assert_size_kgtImageHeader[(sizeof(kgtImageHeader) == 0x14) ? 1 : -1];
-typedef char assert_size_kgtSound[(sizeof(kgtSound) == 0x2a) ? 1 : -1];
-typedef char assert_size_kgtCharacterCPUCommandSkillFull[(sizeof(kgtCharacterCPUCommandSkillFull) == 0x7) ? 1 : -1];
-typedef char assert_size_kgtCharacterCPUCommandSkillShort[(sizeof(kgtCharacterCPUCommandSkillShort) == 0x6) ? 1 : -1];
-typedef char assert_size_kgtCpuCommand[(sizeof(kgtCpuCommand) == 0x6f) ? 1 : -1];
-typedef char assert_size_kgtCharacterCommand[(sizeof(kgtCharacterCommand) == 0x52) ? 1 : -1];
-typedef char assert_size_kgtCharacterHitJunction[(sizeof(kgtCharacterHitJunction) == 0x4) ? 1 : -1];
-typedef char assert_size_kgtCommonImage[(sizeof(kgtCommonImage) == 0x6) ? 1 : -1];
-typedef char assert_size_kgtStoryEntryCpu[(sizeof(kgtStoryEntryCpu) == 0x1a) ? 1 : -1];
-typedef char assert_size_kgtStoryEntry[(sizeof(kgtStoryEntry) == 0xce) ? 1 : -1];
-typedef char assert_size_kgtEngineObject[(sizeof(kgtEngineObject) == 0x17e) ? 1 : -1];
-typedef char assert_size_kgt_character_struct[(sizeof(kgt_character_struct) == 0xe03f) ? 1 : -1];
-typedef char assert_size_kgtSystemHitJunction[(sizeof(kgtSystemHitJunction) == 0x24) ? 1 : -1];
-typedef char assert_size_kgtSystem[(sizeof(kgtSystem) == 0x124bc) ? 1 : -1];
-typedef char assert_size_kgtGameState[(sizeof(kgtGameState) == 0x1ac) ? 1 : -1];
-typedef char assert_size_kgt_demo_file[(sizeof(kgt_demo_file) == 0x2669) ? 1 : -1];
-typedef char assert_size_kgt_stage[(sizeof(kgt_stage) == 0x2691) ? 1 : -1];
-typedef char assert_size_online_tcp_struct[(sizeof(online_tcp_struct) == 0x140) ? 1 : -1];
-typedef char assert_size_wavSoundFile[(sizeof(wavSoundFile) == 0x30) ? 1 : -1];
-typedef char assert_size_kgtBMPINFO[(sizeof(kgtBMPINFO) == 0x14) ? 1 : -1];
-typedef char assert_size_UNK_STRUCT_A[(sizeof(UNK_STRUCT_A) == 0x9fa) ? 1 : -1];
-typedef char assert_size_UNK_STRUCT_B[(sizeof(UNK_STRUCT_B) == 0x701f8) ? 1 : -1];
-typedef char assert_size_UNK_STRUCT_F[(sizeof(UNK_STRUCT_F) == 0x870) ? 1 : -1];
-typedef char assert_size_UNK_0x48_struct[(sizeof(UNK_0x48_struct) == 0x48) ? 1 : -1];
-typedef char assert_size_kgt_debug_a[(sizeof(kgt_debug_a) == 0x870) ? 1 : -1];
-typedef char assert_size_unk_0x650_struct[(sizeof(unk_0x650_struct) == 0x650) ? 1 : -1];
-typedef char assert_size_POSS_VTABLE_GAME_STATE[(sizeof(POSS_VTABLE_GAME_STATE) == 0x48) ? 1 : -1];
+/* size checks: the 32-bit size of the original plus KGT_PTR_GROWTH per pointer (or pointer-sized
+   member); the file records (no pointers) have their file size in both builds */
+#define KGT_ASSERT_SIZE(T, size32, nptr) \
+    _Static_assert(sizeof(T) == (size32) + (nptr) * KGT_PTR_GROWTH, "size of " #T)
+KGT_ASSERT_SIZE(kgtPallette, 0x4, 0);
+KGT_ASSERT_SIZE(kgt_core, 0x2234, 4);
+KGT_ASSERT_SIZE(kgtSkillHeader, 0x27, 0);
+KGT_ASSERT_SIZE(kgtSkill, 0x10, 0);
+KGT_ASSERT_SIZE(kgtImageHeader, 0x14, 1);
+KGT_ASSERT_SIZE(kgtImageHeaderFile, 0x14, 0);
+KGT_ASSERT_SIZE(kgtSound, 0x2a, 2);
+KGT_ASSERT_SIZE(kgtSoundFile, 0x2a, 0);
+KGT_ASSERT_SIZE(kgtCharacterCPUCommandSkillFull, 0x7, 0);
+KGT_ASSERT_SIZE(kgtCharacterCPUCommandSkillShort, 0x6, 0);
+KGT_ASSERT_SIZE(kgtCpuCommand, 0x6f, 0);
+KGT_ASSERT_SIZE(kgtCharacterCommand, 0x52, 0);
+KGT_ASSERT_SIZE(kgtCharacterHitJunction, 0x4, 0);
+KGT_ASSERT_SIZE(kgtCommonImage, 0x6, 0);
+KGT_ASSERT_SIZE(kgtStoryEntryCpu, 0x1a, 0);
+KGT_ASSERT_SIZE(kgtStoryEntry, 0xce, 0);
+KGT_ASSERT_SIZE(kgtEngineObject, 0x17e, 51);
+KGT_ASSERT_SIZE(kgt_character_struct, 0xe03f, 4 + 14);
+KGT_ASSERT_SIZE(kgtSystemHitJunction, 0x24, 0);
+KGT_ASSERT_SIZE(kgtSystem, 0x124bc, 4);
+KGT_ASSERT_SIZE(kgtGameState, 0x1ac, 0);
+KGT_ASSERT_SIZE(kgt_demo_file, 0x2669, 4);
+KGT_ASSERT_SIZE(kgt_stage, 0x2691, 4);
+KGT_ASSERT_SIZE(online_tcp_struct, 0x140, 0);
+KGT_ASSERT_SIZE(kgtWav, 0x18, 3);
+KGT_ASSERT_SIZE(wavSoundFile, 0x30, 1);
+KGT_ASSERT_SIZE(kgtBMPINFO, 0x14, 1);
+KGT_ASSERT_SIZE(UNK_STRUCT_A, 0x9fa, 1);
+KGT_ASSERT_SIZE(UNK_STRUCT_B, 0x701f8, 46);
+KGT_ASSERT_SIZE(UNK_STRUCT_F, 0x870, 0);
+KGT_ASSERT_SIZE(UNK_0x48_struct, 0x48, 0);
+KGT_ASSERT_SIZE(kgt_debug_a, 0x870, 0);
+KGT_ASSERT_SIZE(kgtTrailFrame, 0x10, 1);
+KGT_ASSERT_SIZE(unk_0x650_struct, 0x650, 101);
+KGT_ASSERT_SIZE(kgtDrawNode, 0x8, 2);
+KGT_ASSERT_SIZE(kgtDrawLayer, 0x8, 2);
+KGT_ASSERT_SIZE(POSS_VTABLE_GAME_STATE, 0x48, 18);
+
+/* the file parts that are read straight into the structures, member by member, have no pointers:
+   their offsets from the end of kgt_core are the same in both builds */
+#define KGT_CORE_GROWTH (4 * KGT_PTR_GROWTH)
+_Static_assert(offsetof(kgt_character_struct, iWins) == 0xdeed + KGT_CORE_GROWTH, "character file part");
+_Static_assert(offsetof(kgtSystem, szCharacterNames) == 0x2234 + KGT_CORE_GROWTH, "system file part");
+_Static_assert(offsetof(kgt_demo_file, cBgmSelection) == 0x2234 + KGT_CORE_GROWTH, "demo file part");
+_Static_assert(offsetof(kgt_stage, cBgmSelection) == 0x2234 + KGT_CORE_GROWTH, "stage file part");
+
+#endif

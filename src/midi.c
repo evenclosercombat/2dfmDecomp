@@ -66,16 +66,16 @@ int iPlayAndCloseMidFile(void)
         /* open the sequencer on <Windows directory>\2dfightermaker2nd20022.mid */
         GetWindowsDirectoryA(szPath, MAX_PATH + 1);
         strcat(szPath, gszMidFileName);     /* sprintf(szPath, "%s%s", szPath, ...) in the original, see vDeleteTempMidFile */
-        mciOpen.dwCallback = (DWORD)ghWnd;
+        mciOpen.dwCallback = (DWORD_PTR)ghWnd;
         mciOpen.lpstrDeviceType = "sequencer";
         mciOpen.lpstrElementName = szPath;
-        if (mciSendCommandA(0, MCI_OPEN, MCI_OPEN_TYPE | MCI_OPEN_ELEMENT, (DWORD)&mciOpen))
+        if (mciSendCommandA(0, MCI_OPEN, MCI_OPEN_TYPE | MCI_OPEN_ELEMENT, (DWORD_PTR)&mciOpen))
             return 1;
         guMidiDeviceId = mciOpen.wDeviceID;
     }
     /* play to the end, with MM_MCINOTIFY to the window */
-    mciPlay.dwCallback = (DWORD)ghWnd;
-    if (mciSendCommandA(guMidiDeviceId, MCI_PLAY, MCI_NOTIFY, (DWORD)&mciPlay)) {
+    mciPlay.dwCallback = (DWORD_PTR)ghWnd;
+    if (mciSendCommandA(guMidiDeviceId, MCI_PLAY, MCI_NOTIFY, (DWORD_PTR)&mciPlay)) {
         mciSendCommandA(guMidiDeviceId, MCI_STOP, 0, 0);
         mciSendCommandA(guMidiDeviceId, MCI_CLOSE, 0, 0);
         return 1;

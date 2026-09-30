@@ -86,7 +86,7 @@ int iOpenAndPlayCdAudio(void)
         /* open the "cdaudio" device on the drive (element "X:") */
         mciOpen.lpstrDeviceType = "cdaudio";
         mciOpen.lpstrElementName = gszCdDrive;
-        dwMciError = mciSendCommandA(0, MCI_OPEN, MCI_OPEN_TYPE | MCI_OPEN_ELEMENT, (DWORD)&mciOpen);
+        dwMciError = mciSendCommandA(0, MCI_OPEN, MCI_OPEN_TYPE | MCI_OPEN_ELEMENT, (DWORD_PTR)&mciOpen);
         guCdAudioDeviceId = mciOpen.wDeviceID;
         if (dwMciError) {
             giCdAudioError = 1;
@@ -94,7 +94,7 @@ int iOpenAndPlayCdAudio(void)
         }
         /* positions in tracks/minutes/seconds/frames */
         mciSet.dwTimeFormat = MCI_FORMAT_TMSF;
-        if (mciSendCommandA(guCdAudioDeviceId, MCI_SET, MCI_SET_TIME_FORMAT, (DWORD)&mciSet)) {
+        if (mciSendCommandA(guCdAudioDeviceId, MCI_SET, MCI_SET_TIME_FORMAT, (DWORD_PTR)&mciSet)) {
             mciSendCommandA(guCdAudioDeviceId, MCI_CLOSE, 0, 0);
             giCdAudioError = 1;
             return 1;
@@ -102,8 +102,8 @@ int iOpenAndPlayCdAudio(void)
         /* play the whole track: from track:00:00:00 to (track + 1):00:00:00 */
         mciPlay.dwFrom = MCI_MAKE_TMSF(cTrack, 0, 0, 0);
         mciPlay.dwTo = MCI_MAKE_TMSF(cTrack + 1, 0, 0, 0);
-        mciPlay.dwCallback = (DWORD)ghWnd;
-        if (mciSendCommandA(guCdAudioDeviceId, MCI_PLAY, MCI_NOTIFY | MCI_FROM | MCI_TO, (DWORD)&mciPlay)) {
+        mciPlay.dwCallback = (DWORD_PTR)ghWnd;
+        if (mciSendCommandA(guCdAudioDeviceId, MCI_PLAY, MCI_NOTIFY | MCI_FROM | MCI_TO, (DWORD_PTR)&mciPlay)) {
             mciSendCommandA(guCdAudioDeviceId, MCI_CLOSE, 0, 0);
             giCdAudioError = 2;
             return 1;

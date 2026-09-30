@@ -308,6 +308,9 @@ void vGetPlayerInputs(void)
 
     /* read the keyboard and advance the history ring (1024 frames) */
     GetKeyboardState(gcKeyState);
+#ifdef KGT_TRACE
+    { void vTraceInput(BYTE *pKeyState); vTraceInput(gcKeyState); }    /* debug: scripted keys (see README) */
+#endif
     giInputBufferPos = (giInputBufferPos + 1) & 0x3ff;
     for (iPlayer = 0; iPlayer < 8; iPlayer++)
         giUserKeydowns[iPlayer] = 0;

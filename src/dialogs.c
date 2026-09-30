@@ -57,7 +57,7 @@ extern JOYCONFIG gcDefaultJoystickButtons;   /* 0x41f354: default joystick butto
 #define grDialogRect BSS(RECT, grDialogRect)       /* 0x4247a0: window rectangle of the settings dialog */
 void vSetupDdrawPrimarySurface(void);
 void vCheckWindowBounds(HWND hWnd);
-BOOL CALLBACK iTestplayOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK iTestplayOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void vRegisterInputWindowClasses(void);
 void vFindWindowPos(HWND hWnd);
 int iGetInputKey(char *szKeyName, BYTE cVirtualKey);
@@ -65,9 +65,9 @@ LRESULT CALLBACK iKeyboardInputWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPAR
 void vSpawnKeyInputWindow(HWND hWnd);
 LRESULT CALLBACK iJoyInputWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void vSpawnJoyInputWindow(HWND hWnd);
-BOOL CALLBACK iSetupKeyboardDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-BOOL CALLBACK iSetupJoystickDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-BOOL CALLBACK iLpDialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK iSetupKeyboardDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK iSetupJoystickDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+INT_PTR CALLBACK iLpDialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
 void vSpawnAboutDlgBox(HWND hWnd);
 void vHandleWmCommand(HWND hWnd, int iCommand);
 /* ---- */
@@ -92,7 +92,7 @@ char *gpsJoyInput = "JoyInput";  /* 0x41f83c: window class of the joystick butto
  * Globals: reads gkgtKgtSystem.szStageNames, giAppmode; changes the giConfig* settings, the
  * trackbar handles and positions.
  */
-BOOL CALLBACK iTestplayOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK iTestplayOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     HWND hCombo;
     int iStage;
@@ -149,17 +149,17 @@ BOOL CALLBACK iTestplayOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARA
                combo boxes are not in this template, so in test play both CPU modes become 0 */
             if (giAppmode) {
                 hCombo = GetDlgItem(hDlg, 0x3f1);
-                giConfigTestplayPlayer0Cpu = SendMessageA(hCombo, CB_GETCURSEL, 0, 0);
+                giConfigTestplayPlayer0Cpu = (int)SendMessageA(hCombo, CB_GETCURSEL, 0, 0);
                 hCombo = GetDlgItem(hDlg, 0x3f2);
-                giConfigTestplayPlayer1Cpu = SendMessageA(hCombo, CB_GETCURSEL, 0, 0);
+                giConfigTestplayPlayer1Cpu = (int)SendMessageA(hCombo, CB_GETCURSEL, 0, 0);
             }
             hCombo = GetDlgItem(hDlg, 0x36b1);
-            giConfigTestplayStageNb = SendMessageA(hCombo, CB_GETCURSEL, 0, 0);
+            giConfigTestplayStageNb = (int)SendMessageA(hCombo, CB_GETCURSEL, 0, 0);
             giConfigTestplayJoystick = IsDlgButtonChecked(hDlg, 0x32cb);
-            giConfigTestplayGamespeed = giTrackbarSpeedPos;
-            giConfigTestplayTime = giTrackbarTimePos;
-            giConfigNumberOfRoundsTeamVs = giTrackbarRoundsTeamVsPos;
-            giConfigNumberOfRounds = giTrackbarRoundsPos;
+            giConfigTestplayGamespeed = (int)giTrackbarSpeedPos;
+            giConfigTestplayTime = (int)giTrackbarTimePos;
+            giConfigNumberOfRoundsTeamVs = (int)giTrackbarRoundsTeamVsPos;
+            giConfigNumberOfRounds = (int)giTrackbarRoundsPos;
             EndDialog(hDlg, 1);
             break;
         case 0x7dd:
@@ -176,7 +176,7 @@ BOOL CALLBACK iTestplayOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARA
             case TB_LINEUP: case TB_LINEDOWN: case TB_PAGEUP: case TB_PAGEDOWN:
             case TB_THUMBPOSITION: case TB_THUMBTRACK: case TB_TOP: case TB_BOTTOM:
                 giTrackbarSpeedPos = SendMessageA(ghTrackbarSpeed, TBM_GETPOS, 0, 0);
-                SetDlgItemInt(hDlg, 0x7df, giTrackbarSpeedPos, TRUE);
+                SetDlgItemInt(hDlg, 0x7df, (int)giTrackbarSpeedPos, TRUE);
                 return TRUE;
             }
         }
@@ -185,7 +185,7 @@ BOOL CALLBACK iTestplayOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARA
             case TB_LINEUP: case TB_LINEDOWN: case TB_PAGEUP: case TB_PAGEDOWN:
             case TB_THUMBPOSITION: case TB_THUMBTRACK: case TB_TOP: case TB_BOTTOM:
                 giTrackbarTimePos = SendMessageA(ghTrackbarTime, TBM_GETPOS, 0, 0);
-                SetDlgItemInt(hDlg, 0x7e1, giTrackbarTimePos, TRUE);
+                SetDlgItemInt(hDlg, 0x7e1, (int)giTrackbarTimePos, TRUE);
                 return TRUE;
             }
         }
@@ -194,7 +194,7 @@ BOOL CALLBACK iTestplayOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARA
             case TB_LINEUP: case TB_LINEDOWN: case TB_PAGEUP: case TB_PAGEDOWN:
             case TB_THUMBPOSITION: case TB_THUMBTRACK: case TB_TOP: case TB_BOTTOM:
                 giTrackbarRoundsTeamVsPos = SendMessageA(ghTrackbarRoundsTeamVs, TBM_GETPOS, 0, 0);
-                SetDlgItemInt(hDlg, 0x7e3, giTrackbarRoundsTeamVsPos, TRUE);
+                SetDlgItemInt(hDlg, 0x7e3, (int)giTrackbarRoundsTeamVsPos, TRUE);
                 return TRUE;
             }
         }
@@ -203,7 +203,7 @@ BOOL CALLBACK iTestplayOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARA
             case TB_LINEUP: case TB_LINEDOWN: case TB_PAGEUP: case TB_PAGEDOWN:
             case TB_THUMBPOSITION: case TB_THUMBTRACK: case TB_TOP: case TB_BOTTOM:
                 giTrackbarRoundsPos = SendMessageA(ghTrackbarRounds, TBM_GETPOS, 0, 0);
-                SetDlgItemInt(hDlg, 0x7e5, giTrackbarRoundsPos, TRUE);
+                SetDlgItemInt(hDlg, 0x7e5, (int)giTrackbarRoundsPos, TRUE);
                 return TRUE;
             }
         }
@@ -644,7 +644,7 @@ void vSpawnJoyInputWindow(HWND hWnd)
  * Globals: changes gKeyConfigEdit, gpKeyInputTarget, gcKeyboardControlsSets (on OK); reads
  * gcDefaultKeyboardControls.
  */
-BOOL CALLBACK iSetupKeyboardDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK iSetupKeyboardDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     int iEntry;
     char szKeyName[256];
@@ -712,7 +712,7 @@ BOOL CALLBACK iSetupKeyboardDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
  * Globals: changes gJoyConfigEdit, giJoyInputPad, gpJoyInputButton, gcJoystickButtons (on OK);
  * reads gcDefaultJoystickButtons.
  */
-BOOL CALLBACK iSetupJoystickDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK iSetupJoystickDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     int iEntry;
     char szButton[256];
@@ -775,7 +775,7 @@ BOOL CALLBACK iSetupJoystickDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM 
  * hDlg, uMsg, wParam, lParam: the usual.
  * Returns TRUE for handled messages.
  */
-BOOL CALLBACK iLpDialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK iLpDialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     switch (uMsg) {
     case WM_CLOSE:

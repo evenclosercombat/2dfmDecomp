@@ -34,7 +34,7 @@ int giPixelFormat565[6] = { 16, 16, 16, 5, 4, 3 };  /* 0x41e7e4: {16, 16, 16, 5,
  * Parameters: pAddress - memory to clear; iSize - number of bytes (> 0).
  * Globals: none.
  */
-void vMemzero(void *pAddress, int iSize)
+void vMemzero(void *pAddress, size_t iSize)
 {
     char *pByte;
 
@@ -305,8 +305,17 @@ int bReadKgtCore(kgt_core *pCore, HANDLE hFile)
     pCore->iImagesCount = iCount;
     for (i = 0; i < iCount; i++) {
         pImage = (kgtImageHeader *)pTable + i;
-        if (!ReadFile(hFile, pImage, sizeof(kgtImageHeader), &dwBytesRead, NULL))
-            return 1;
+        /* the file record (0x14 bytes) and the loaded header differ in the pointer's size: read the
+           record, then copy its fields (pAlloc is set below) */
+        {
+            kgtImageHeaderFile record;
+            if (!ReadFile(hFile, &record, sizeof(record), &dwBytesRead, NULL))
+                return 1;
+            pImage->iWidth = record.iWidth;
+            pImage->iHeight = record.iHeight;
+            pImage->iFlags = record.iFlags;
+            pImage->iSize = record.iSize;
+        }
         /* data size: width * height, + 0x400 for an own palette (256 x 4 bytes); a non-zero iSize (the
            stored size) replaces it.  matching: width and flags are read through pointers so that their
            loads stay in this order around the pAlloc store (vc6-matching-notes/matching-techniques.md) */
@@ -341,8 +350,19 @@ int bReadKgtCore(kgt_core *pCore, HANDLE hFile)
     pCore->iSoundsCount = iCount;
     for (i = 0; i < iCount; i++) {
         pSound = (kgtSound *)pTable + i;
-        if (!ReadFile(hFile, pSound, sizeof(kgtSound), &dwBytesRead, NULL))
-            return 1;
+        /* the file record (0x2a bytes), converted to the loaded layout; like the original, pAlloc keeps
+           the value of the file's slot when there is no data (it is only freed when not 0) */
+        {
+            kgtSoundFile record;
+            if (!ReadFile(hFile, &record, sizeof(record), &dwBytesRead, NULL))
+                return 1;
+            pSound->pAlloc = (void *)(uintptr_t)record.dwAlloc;
+            memcpy(pSound->szName, record.szName, sizeof(pSound->szName));
+            pSound->pWav = NULL;    /* clears the whole slot; iSize then fills its low 4 bytes */
+            pSound->iSize = record.iSize;
+            pSound->cFlags = record.cFlags;
+            pSound->cCdTrack = record.cCdTrack;
+        }
         dwSize = pSound->iSize;
         if (dwSize) {
             pSound->pAlloc = GlobalAlloc(GMEM_FIXED, dwSize);
@@ -369,8 +389,9 @@ int bReadKgtCore(kgt_core *pCore, HANDLE hFile)
     ReadFile(hFile, &pTable, 4, &dwBytesRead, NULL);  /* matching: unreachable, left from the matching attempts (it takes pTable's address) */
 }
 
-/* The loaded part of a character: everything up to the runtime state (see iClearCharacterFile). */
-#define KGT_CHARACTER_FILE_SIZE 0xdeed
+/* The loaded part of a character: everything up to the runtime state (see iClearCharacterFile);
+   0xdeed bytes in the original */
+#define KGT_CHARACTER_FILE_SIZE offsetof(kgt_character_struct, iWins)
 
 /*
  * Unloads the character file of player slot iPlayerIdx: frees its KGT data, zeroes the loaded part of
@@ -735,16 +756,7 @@ error:
 
 /* ---- declarations not (yet) in globals.h / protos.h --------------------------------------- */
 
-/* draw list rebuilt every frame by vProcessEngineObjects: one list per layer (iDepth) */
-typedef struct kgtDrawNode {
-    kgtEngineObject *pObj;  /* the object */
-    struct kgtDrawNode *pNext;  /* next object of the same layer, NULL at the end */
-} kgtDrawNode;
-
-typedef struct kgtDrawLayer {
-    kgtDrawNode *pHead;  /* first node, valid only when pTail is not NULL */
-    kgtDrawNode *pTail;  /* last node; NULL = empty layer */
-} kgtDrawLayer;
+/* (kgtDrawNode and kgtDrawLayer, the per-layer draw lists, are in kgt_types.h: gBss needs their size) */
 
 extern char gszGameWindow[];                       /* 0x41e7bc: window class and title */
 extern int giPixelFormat565[6];                    /* 0x41e7e4: {16, 16, 16, 5, 4, 3}; vHandleDrawing only animates [0..2] between 8 and 0x600 with the speeds in [3..5]; nothing reads it */
@@ -1549,9 +1561,9 @@ void vInitializeWindowsAndMemory(void)
     /* settings from the ini files */
     vLoadKgt2kConfig();
     vLoadGameConfig();
-    /* 0x438 bytes: gBmiFrame with room for 256 colours, and the frame buffer DC, bitmap and pixel
-       pointer globals right after it */
-    vMemzero(&gBmiFrame, 0x438);
+    /* 0x438 bytes in the original: gBmiFrame with room for 256 colours, and the frame buffer DC,
+       bitmap and pixel pointer globals right after it (up to the end of gpFrameBits) */
+    vMemzero(&gBmiFrame, BSS_OFS_gpFrameBits + sizeof(void *) - BSS_OFS_gBmiFrame);
     vMemzero(gkgtBitmaps, sizeof(gkgtBitmaps));
     vMemzero(&gkgtGameState, sizeof(gkgtGameState));
     vMemzero(gkgtLoadedCharacter, sizeof(gkgtLoadedCharacter));
@@ -1751,9 +1763,15 @@ void vGameLoop(void)
                 gkgtLoadedCharacter[i].iInputBufferPos = giInputBufferPos;
             }
             /* the ticks: inputs, engine, local input to the peers */
+#ifdef KGT_TRACE
+            iTicksToRun = 8;    /* debug: always 8 ticks per frame, and a state checksum per tick (see README) */
+#endif
             while (iTicksToRun--) {
                 vGetPlayerInputs();
                 vProcessEngineObjects();
+#ifdef KGT_TRACE
+                { void vTraceTick(void); vTraceTick(); }
+#endif
                 vOnlineBroadcastInput(giInputBuffer[0][giInputBufferPos]);
             }
             /* then one frame */
@@ -1827,7 +1845,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR szCmdLine
     ghInstance = hInstance;
     /* always NULL on Win32; msg is not set here (as in the original) */
     if (hPrevInstance)
-        return msg.wParam;
+        return (int)msg.wParam;
     giAppmode = 0;
     iNumber = 0;
     /* the command line switches */
@@ -2069,7 +2087,7 @@ LRESULT CALLBACK iMainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
     case WM_COMMAND:
         /* from the menu or an accelerator (no control window) */
         if (LOWORD(lParam) == 0)
-            vHandleWmCommand(hWnd, wParam);
+            vHandleWmCommand(hWnd, (int)wParam);
         return 0;
     }
     return DefWindowProcA(hWnd, uMsg, wParam, lParam);

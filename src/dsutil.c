@@ -163,8 +163,8 @@ kgtWav *kgtwBuildWavFromFile(LPDIRECTSOUND pDirectSound, LPCSTR szFileName, int 
         if (iConcurrent < 1)
             iConcurrent = 1;
 
-        /* the 0x10-byte header followed by the buffer pointers */
-        if ((pWav = (kgtWav *)LocalAlloc(LPTR, 0x10 + iConcurrent * sizeof(LPDIRECTSOUNDBUFFER))) != NULL) {
+        /* the header (0x10 bytes in the original) followed by the buffer pointers */
+        if ((pWav = (kgtWav *)LocalAlloc(LPTR, offsetof(kgtWav, pBuffers) + iConcurrent * sizeof(LPDIRECTSOUNDBUFFER))) != NULL) {
             int iBuffer;
 
             pWav->iAlloc = iConcurrent;
@@ -250,8 +250,8 @@ kgtWav *kgtwBuildWav(LPDIRECTSOUND pDirectSound, void *pWaveData, int iConcurren
         if (iConcurrent < 1)
             iConcurrent = 1;
 
-        /* the 0x10-byte header followed by the buffer pointers */
-        if ((pWav = (kgtWav *)LocalAlloc(LPTR, 0x10 + iConcurrent * sizeof(LPDIRECTSOUNDBUFFER))) != NULL) {
+        /* the header (0x10 bytes in the original) followed by the buffer pointers */
+        if ((pWav = (kgtWav *)LocalAlloc(LPTR, offsetof(kgtWav, pBuffers) + iConcurrent * sizeof(LPDIRECTSOUNDBUFFER))) != NULL) {
             int iBuffer;
 
             pWav->iAlloc = iConcurrent;

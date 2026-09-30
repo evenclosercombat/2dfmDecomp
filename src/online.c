@@ -28,6 +28,30 @@ DEFINE_GUID(guidKgt2kApp, 0xafd1fc20, 0xac5f, 0x11d1, 0xb4, 0x1f, 0x00, 0x00, 0x
 #define NETMSG_HERE     3       /* answer to NETMSG_JOIN: "I am here" with the answerer's name */
 #define NETMSG_CHAT     4       /* chat text */
 
+#if defined(_WIN64)
+/* 64-bit build: dplayx.dll is loaded when netplay starts up (iInitOnline) instead of being imported.
+   64-bit Windows has a 64-bit dplayx.dll only with the optional DirectPlay feature, and llvm-mingw
+   has no x86-64 import library for it; without it the provider list stays empty and the netplay
+   dialog reports that DirectPlay could not be created. */
+static HRESULT (WINAPI *gpfnDirectPlayEnumerateA)(LPDPENUMDPCALLBACKA, LPVOID);
+static HRESULT (WINAPI *gpfnDirectPlayCreate)(LPGUID, LPDIRECTPLAY *, IUnknown *);
+
+static void vLoadDirectPlay(void)
+{
+    HMODULE hDplay = LoadLibraryA("dplayx.dll");
+
+    if (hDplay) {
+        gpfnDirectPlayEnumerateA = (HRESULT (WINAPI *)(LPDPENUMDPCALLBACKA, LPVOID))(void (*)(void))GetProcAddress(hDplay, "DirectPlayEnumerateA");
+        gpfnDirectPlayCreate = (HRESULT (WINAPI *)(LPGUID, LPDIRECTPLAY *, IUnknown *))(void (*)(void))GetProcAddress(hDplay, "DirectPlayCreate");
+    }
+}
+
+#define DirectPlayEnumerateA(pfnCallback, pContext) \
+    (gpfnDirectPlayEnumerateA ? gpfnDirectPlayEnumerateA(pfnCallback, pContext) : DPERR_UNAVAILABLE)
+#define DirectPlayCreate(pGuid, ppDirectPlay, pUnknown) \
+    (gpfnDirectPlayCreate ? gpfnDirectPlayCreate(pGuid, ppDirectPlay, pUnknown) : DPERR_UNAVAILABLE)
+#endif
+
 #pragma pack(push, 1)
 typedef struct { BYTE bType; DWORD dwInput; } NETMSG_INPUT_T;               /* 5 bytes */
 typedef struct { BYTE bType; char szName[32]; DPID dpid; } NETMSG_JOIN_T;   /* 37 bytes (also NETMSG_HERE) */
@@ -298,6 +322,9 @@ int iEnumDirectPlayServiceProviders(void)
 int iInitOnline(void)
 {
     gpAppGuid = (LPGUID)&guidKgt2kApp;
+#if defined(_WIN64)
+    vLoadDirectPlay();
+#endif
     iEnumDirectPlayServiceProviders();
     return 1;
 }
@@ -496,7 +523,7 @@ int iOnlineJoinSession(int iSession)
  * Globals: changes gpDirectPlay, gszPlayerName, gszSessionName (and what the session functions
  * change).
  */
-BOOL CALLBACK iOnlineDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
+INT_PTR CALLBACK iOnlineDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
     LRESULT iSelection;
     int iSession;
@@ -513,7 +540,7 @@ BOOL CALLBACK iOnlineDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
                 return FALSE;
             }
             GetDlgItemTextA(hDlg, 0x3f1, gszPlayerName, 32);
-            if (!iOnlineJoinSession(iSelection)) {
+            if (!iOnlineJoinSession((int)iSelection)) {
                 MessageBoxA(hDlg, "\216Q\211\301\202\311\216\270\224s\202\265\202\334\202\265\202\275\201B\220\335\222\350\202\360\212m\224F\202\265\202\304\211\272\202\263\202\242\201B", NULL, 0);  /* 参加に失敗しました。設定を確認して下さい。 (joining failed; check the settings) */
                 return FALSE;
             }

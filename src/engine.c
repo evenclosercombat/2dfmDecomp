@@ -643,7 +643,7 @@ void vjmpRoundStart(void)
     case 0:
         /* shSkillIdxRound1.. are consecutive shorts, one per round */
         gpkgtCurrentEngineObject->iProcessStep = 1;
-        gpkgtCurrentEngineObject->iObjectType = (kgtEngineObjectTypes)kgtoNewObjectForSkillIdx(
+        gpkgtCurrentEngineObject->iObjectType = (intptr_t)kgtoNewObjectForSkillIdx(
             (unsigned short)(&gkgtKgtSystem.shSkillIdxRound1)[gkgtGameState.iCurrentRound], 0x65, 0, 0);
         gpkgtCurrentEngineObject->pWork015E = kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdxSpirits, 0x65, 0, 0);
         /* fall through */
@@ -722,7 +722,7 @@ void vjmpIdleB(void)
  * pGrid: the cursor.  All callers also pass &gpkgtCurrentEngineObject->iPlayerIdx and 0 (piUnused,
  * iUnused), which are not used.  Globals read: gkgtKgtSystem.
  */
-void vCharacterSelectChangeSelection(kgtGridCoordinates *pGrid, int iDCol, int iDRow, int *piUnused, int iUnused)
+void vCharacterSelectChangeSelection(kgtGridCoordinates *pGrid, int iDCol, int iDRow, intptr_t *piUnused, int iUnused)
 {
     pGrid->iCol += iDCol;
     pGrid->iRow += iDRow;
@@ -807,7 +807,7 @@ void vPickPlayerColor(int iPlayer, DWORD dwInput)
  * system file, create the cursor objects), 1 run the selection, 4 back to the title menu (start button
  * or an error).  When both sides have chosen, the battle (BATTLE_STATE) starts after 100 more frames
  * (giBattlePrestartTimer); in story mode vProgressStoryMode takes over instead.
- * The handler's work slots: iWork0166 / iWork016A the cursor objects of 1P / 2P (int-cast pointers),
+ * The handler's work slots: iWork0166 / iWork016A the cursor objects of 1P / 2P (pointers as integers),
  * pWork015E / pWork0162 the portrait of the character under the 1P / 2P cursor.
  * Input bits (giLastInputCleaned / giLastInputXor): 1 left, 2 right, 4 up, 8 down, 0x10-0x200 buttons
  * A-F (0x3f0 = any of them), 0x400 start.
@@ -893,12 +893,12 @@ void vjmpCharacterSelectScreen(void)
         vSpawnEngineObjectForDemoSkills();
         switch (gkgtGameState.kgtGameMode) {
         case GAME_MODE_STORY:
-            gpkgtCurrentEngineObject->iWork0166 = (int)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx1pVsScreenCursor, 0x65, 0, 0);
+            gpkgtCurrentEngineObject->iWork0166 = (intptr_t)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx1pVsScreenCursor, 0x65, 0, 0);
             break;
         case GAME_MODE_VS_SINGLE:
         case GAME_MODE_VS_TEAM:
-            gpkgtCurrentEngineObject->iWork0166 = (int)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx1pVsScreenCursor, 0x65, 0, 0);
-            gpkgtCurrentEngineObject->iWork016A = (int)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx2pVsScreenCursor, 0x65, 0, 0);
+            gpkgtCurrentEngineObject->iWork0166 = (intptr_t)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx1pVsScreenCursor, 0x65, 0, 0);
+            gpkgtCurrentEngineObject->iWork016A = (intptr_t)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx2pVsScreenCursor, 0x65, 0, 0);
             for (i = 0; i < 4; i++) {
                 gpTeamPortraits[i] = NULL;
                 gpTeamPortraits[i + 4] = NULL;
@@ -976,7 +976,7 @@ void vjmpCharacterSelectScreen(void)
             if (gkgtGameState.iCharSelect[0] >= 0 && (giLastInputXor[giStoryModePlayerIdx] & 0x3f0)) {
                 gkgtGameState.abPlayerChose[0] = 1;
                 ((kgtEngineObject *)gpkgtCurrentEngineObject->iWork0166)->iJumpIdx = RESET_IDX;
-                gpkgtCurrentEngineObject->iWork0166 = (int)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx1pVsCursorAfterInput, 0x65, 0, 0);
+                gpkgtCurrentEngineObject->iWork0166 = (intptr_t)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx1pVsCursorAfterInput, 0x65, 0, 0);
                 gkgtGameState.iTeamColor0 = iGetPressedActionButton(giLastInputXor[giStoryModePlayerIdx]);
                 giStoryModeSide = giStoryModePlayerIdx;
                 vPickPlayerColor(0, giLastInputXor[giStoryModePlayerIdx]);
@@ -1006,9 +1006,9 @@ void vjmpCharacterSelectScreen(void)
                 if (gkgtGameState.iCharSelect[iPlayer] >= 0 && (giLastInputXor[iPlayer] & 0x3f0)) {
                     pVsCursor->iJumpIdx = RESET_IDX;
                     if (iPlayer == 0)
-                        gpkgtCurrentEngineObject->iWork0166 = (int)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx1pVsCursorAfterInput, 0x65, 0, 0);
+                        gpkgtCurrentEngineObject->iWork0166 = (intptr_t)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx1pVsCursorAfterInput, 0x65, 0, 0);
                     else
-                        gpkgtCurrentEngineObject->iWork016A = (int)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx2pVsCursorAfterInput, 0x65, 0, 0);
+                        gpkgtCurrentEngineObject->iWork016A = (intptr_t)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx2pVsCursorAfterInput, 0x65, 0, 0);
                     gkgtGameState.abPlayerChose[iPlayer] = 1;
                     gkgtGameState.aiTeamColor[iPlayer * 4] = iGetPressedActionButton(giLastInputXor[iPlayer]);
                     vPickPlayerColor(iPlayer, giLastInputXor[iPlayer]);
@@ -1129,9 +1129,9 @@ void vjmpCharacterSelectScreen(void)
                         /* the whole team is chosen */
                         pTeamCursor->iJumpIdx = RESET_IDX;
                         if (iSide == 0)
-                            gpkgtCurrentEngineObject->iWork0166 = (int)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx1pVsCursorAfterInput, 0x65, 0, 0);
+                            gpkgtCurrentEngineObject->iWork0166 = (intptr_t)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx1pVsCursorAfterInput, 0x65, 0, 0);
                         else
-                            gpkgtCurrentEngineObject->iWork016A = (int)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx2pVsCursorAfterInput, 0x65, 0, 0);
+                            gpkgtCurrentEngineObject->iWork016A = (intptr_t)kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdx2pVsCursorAfterInput, 0x65, 0, 0);
                         gkgtGameState.abPlayerChose[iSide] = 1;
                     } else {
                         /* the member is chosen: load it into its own slot, show its portrait in the
@@ -1197,7 +1197,7 @@ error_exit:
 void vjmpStoryCharacterSelect_Unused(void)
 {
     int i;              /* side */
-    int *piShown;       /* character shown for side i */
+    intptr_t *piShown;  /* character shown for side i */
     kgtEngineObject **ppFace;
     kgtEngineObject *pFace;
     int iSkill;         /* unused */
@@ -1258,7 +1258,7 @@ void vjmpStoryCharacterSelect_Unused(void)
                     ppFace = &gpkgtCurrentEngineObject->pWork015E;
                     break;
                 case 1:
-                    piShown = (int *)&gpkgtCurrentEngineObject->iObjectType;
+                    piShown = &gpkgtCurrentEngineObject->iObjectType;
                     pFace = gpkgtCurrentEngineObject->pWork0162;
                     ppFace = &gpkgtCurrentEngineObject->pWork0162;
                     break;
@@ -1354,7 +1354,7 @@ void vjmpMenuTraversal(void)
         if (iOpenDemoFile((BYTE)gkgtKgtSystem.cTitleDemoIdx) == 0)
             vSpawnEngineObjectForDemoSkills();
         /* idle countdown = the title demo's play time; cSystemBitmask 0x40 = "press start" step */
-        gpkgtCurrentEngineObject->pWork015E = (kgtEngineObject *)giDemoTime;
+        gpkgtCurrentEngineObject->iWork015E = giDemoTime;
         if (gkgtKgtSystem.cSystemBitmask & 0x40)
             gpkgtCurrentEngineObject->iProcessStep++;
         else
@@ -1366,8 +1366,8 @@ void vjmpMenuTraversal(void)
             gpkgtCurrentEngineObject->iProcessStep = 4;
             return;
         }
-        if (gkgtKgtSystem.cOpeningDemoIdx != 0 && gpkgtCurrentEngineObject->pWork015E != NULL
-            && (gpkgtCurrentEngineObject->pWork015E = (kgtEngineObject *)((int)gpkgtCurrentEngineObject->pWork015E - 1)) == NULL) {
+        if (gkgtKgtSystem.cOpeningDemoIdx != 0 && gpkgtCurrentEngineObject->iWork015E != 0
+            && (gpkgtCurrentEngineObject->iWork015E = gpkgtCurrentEngineObject->iWork015E - 1) == 0) {
             vResetObjectsAndSpeed();
             gpkgtCurrentEngineObject->iProcessStep = 0;
             return;
@@ -1394,7 +1394,7 @@ void vjmpMenuTraversal(void)
         pMenuCursor = kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdxTitleCursor, 0x65, 0, 0);
         gkgtLoadedCharacter[0].iWins = 0;
         gkgtLoadedCharacter[1].iWins = 0;
-        gpkgtCurrentEngineObject->iObjectType = (kgtEngineObjectTypes)pMenuCursor;
+        gpkgtCurrentEngineObject->iObjectType = (intptr_t)pMenuCursor;
         gkgtGameState.iGameStateNumber = 1000;
         /* fall through */
     case 5:     /* mode menu: up/left (5) and down/right (0xa) move, a button A-F chooses; one move
@@ -1437,14 +1437,14 @@ void vjmpMenuTraversal(void)
         ((kgtEngineObject *)gpkgtCurrentEngineObject->iObjectType)->iPosX = pCursorPos[giGameModes[giMenuSelectionIdx]]->shParam1 << 16;
         ((kgtEngineObject *)gpkgtCurrentEngineObject->iObjectType)->iPosY = pCursorPos[giGameModes[giMenuSelectionIdx]]->shParam2 << 16;
         /* idle countdown (restarted by any key): back to the opening demo */
-        if ((gkgtKgtSystem.cOpeningDemoIdx != 0 || (gkgtKgtSystem.cSystemBitmask & 0x40)) && gpkgtCurrentEngineObject->pWork015E != NULL
-            && (gpkgtCurrentEngineObject->pWork015E = (kgtEngineObject *)((int)gpkgtCurrentEngineObject->pWork015E - 1)) == NULL) {
+        if ((gkgtKgtSystem.cOpeningDemoIdx != 0 || (gkgtKgtSystem.cSystemBitmask & 0x40)) && gpkgtCurrentEngineObject->iWork015E != 0
+            && (gpkgtCurrentEngineObject->iWork015E = gpkgtCurrentEngineObject->iWork015E - 1) == 0) {
             vResetObjectsAndSpeed();
             gpkgtCurrentEngineObject->iProcessStep = 0;
             return;
         }
         if (giAnyInput != 0)
-            gpkgtCurrentEngineObject->pWork015E = (kgtEngineObject *)giDemoTime;
+            gpkgtCurrentEngineObject->iWork015E = giDemoTime;
         break;
     }
 }
@@ -1473,17 +1473,17 @@ void vjmpGameOverScreen(void)
             vSpawnEngineObjectForDemoSkills();
         pCursor = kgtoNewObjectForSkillIdx((unsigned short)gkgtKgtSystem.shSkillIdxContinueCursor, 0x65, 0, 0);
         gkgtGameState.iGameStateNumber = 4000;
-        gpkgtCurrentEngineObject->iObjectType = (kgtEngineObjectTypes)pCursor;
+        gpkgtCurrentEngineObject->iObjectType = (intptr_t)pCursor;
         break;
     case 1:
         if (giAnyInput == 0) {
             gpkgtCurrentEngineObject->iPosX = 0;
         } else if ((giAnyInputXor & 0xf) && gpkgtCurrentEngineObject->iPosX == 0) {
-            gpkgtCurrentEngineObject->pWork015E = (kgtEngineObject *)((int)gpkgtCurrentEngineObject->pWork015E ^ 1);
+            gpkgtCurrentEngineObject->iWork015E ^= 1;
             gpkgtCurrentEngineObject->iPosX = 1;
         } else if ((giAnyInputXor & 0x3f0) && gpkgtCurrentEngineObject->iPosX == 0) {
             vResetObjectsAndSpeed();
-            switch ((int)gpkgtCurrentEngineObject->pWork015E) {
+            switch (gpkgtCurrentEngineObject->iWork015E) {
             case 0:     /* continue: replay the story step (vProgressStoryMode advances it again) */
                 gkgtGameState.iCurrentRound = giStoryModeCurrentRound;
                 gkgtLoadedCharacter[0].iWins = giStoryWinsP1;
@@ -1500,8 +1500,8 @@ void vjmpGameOverScreen(void)
         /* place the cursor (x = param 1, y = param 2 of the first step of the yes / no position skills) */
         pCursorPos[0] = &gkgtKgtSystem.kgtCore.pSkillScriptsAlloc[(unsigned short)gkgtKgtSystem.kgtCore.pSkillsAlloc[(unsigned short)gkgtKgtSystem.shSkillIdxPositionCursorItDoes].shStartingStepIdx];
         pCursorPos[1] = &gkgtKgtSystem.kgtCore.pSkillScriptsAlloc[(unsigned short)gkgtKgtSystem.kgtCore.pSkillsAlloc[(unsigned short)gkgtKgtSystem.shSkillIdxPositionCursorItDoesNot].shStartingStepIdx];
-        ((kgtEngineObject *)gpkgtCurrentEngineObject->iObjectType)->iPosX = pCursorPos[(int)gpkgtCurrentEngineObject->pWork015E]->shParam1 << 16;
-        ((kgtEngineObject *)gpkgtCurrentEngineObject->iObjectType)->iPosY = pCursorPos[(int)gpkgtCurrentEngineObject->pWork015E]->shParam2 << 16;
+        ((kgtEngineObject *)gpkgtCurrentEngineObject->iObjectType)->iPosX = pCursorPos[gpkgtCurrentEngineObject->iWork015E]->shParam1 << 16;
+        ((kgtEngineObject *)gpkgtCurrentEngineObject->iObjectType)->iPosY = pCursorPos[gpkgtCurrentEngineObject->iWork015E]->shParam2 << 16;
         break;
     }
 }
@@ -2174,27 +2174,12 @@ typedef struct kgtSkillStageScroll {
     BYTE pad_06[10];            /* 0x06: rest of the step */
 } kgtSkillStageScroll;
 
-/* One captured frame of an after-image trail, drawn behind an object (kgtEngineObject.cAfterImageIdx,
-   1-based); the same memory as unk_0x650_struct.aiData[(n + 1) * 4 + 0..3]. */
-typedef struct kgtStageLayer {
-    int iX;                     /* 0x00: x (16.16) */
-    int iY;                     /* 0x04: y (16.16) */
-    int iFlags;                 /* 0x08: & 3 flip, 4 mirrored */
-    kgtSkillImageStep *pStep;   /* 0x0c: the image step shown */
-} kgtStageLayer;
-
-/* engine.c's view of an after-image trail (unk_0x650_struct). */
-typedef struct kgtStageLayerSet {
-    int bInUse;                 /* 0x00: trail in use */
-    int iNewest;                /* 0x04: next frame slot (0..99) */
-    BYTE *pInfo;                /* 0x08: the AI script step: [3] frames shown, [4] capture interval,
-                                   [5] blend type, [6] colour mode, [7..10] r g b alpha */
-    int iPhase;                 /* 0x0c: frames until the next capture */
-    kgtStageLayer kgtLayers[100];   /* 0x10: the captured frames (ring buffer) */
-} kgtStageLayerSet;
 #pragma pack(pop)
 
-#define gAfterImageLayers BSS(kgtStageLayerSet[], gAfterImageLayers)  /* 0x447f80: engine.c's view of gAfterImageTrails (drawing) */
+/* (the after-image trails, drawn behind an object with a kgtEngineObject.cAfterImageIdx (1-based):
+   unk_0x650_struct in kgt_types.h, whose pStep is the AI script step: [3] frames shown, [4] capture
+   interval, [5] blend type, [6] colour mode, [7..10] r g b alpha) */
+#define gAfterImageTrails BSS(unk_0x650_struct[100], gAfterImageTrails)  /* 0x447f80: after-image trails (script command AI), drawn here */
 
 int iLoadExternalImage(kgtBMPINFO *pInfo, LPCSTR szResource, LPCSTR szFile, int iUnused);   /* main_b.c */
 int iKgtDecompress(BYTE *pDst, BYTE *pSrc, int iSrcLen);                                       /* compress.c */
@@ -2206,7 +2191,8 @@ void vResetObjectsAndSpeed(void);                                               
    keep x in shParam1 and y in shParam2 (pixels), and a spacing in cParam3/cParam4 */
 #define SYS_STEP(n) gkgtKgtSystem.kgtCore.pSkillScriptsAlloc[(WORD)gkgtKgtSystem.kgtCore.pSkillsAlloc[n].shStartingStepIdx]
 
-/* several engine object fields (iWork0166 ..., iPlayerIdx) hold pointers to other objects as ints */
+/* several engine object fields (iWork0166 ..., iPlayerIdx) hold pointers to other objects (ints in the
+   original, pointer-sized integers here) */
 #define OBJ(p) ((kgtEngineObject *)(p))
 
 /* ------------------------------------------------------------------------------------------ */
@@ -2418,7 +2404,7 @@ void vjmpHandleBattleInterface(void)
                 pObj->iSkillIdx = pObj->iStartSkillIdx = (WORD)gkgtKgtSystem.shSkillIdxVictoryMarkOff;
                 if (!bMarked) {
                     bMarked = 1;
-                    gpkgtCurrentEngineObject->iPlayerIdx = (int)pObj;
+                    gpkgtCurrentEngineObject->iPlayerIdx = (intptr_t)pObj;
                     gpkgtCurrentEngineObject->iObjectType = gkgtLoadedCharacter[0].iWins;
                 }
                 { int *pSkillIdx = &pObj->iSkillIdx; pObj->iSkillScriptIdx = (WORD)gkgtKgtSystem.kgtCore.pSkillsAlloc[*pSkillIdx].shStartingStepIdx; }
@@ -2443,7 +2429,7 @@ void vjmpHandleBattleInterface(void)
                 if (!bMarked) {
                     bMarked = 1;
                     gpkgtCurrentEngineObject->pWork015E = pObj;
-                    gpkgtCurrentEngineObject->pWork0162 = (kgtEngineObject *)gkgtLoadedCharacter[1].iWins;
+                    gpkgtCurrentEngineObject->iWork0162 = gkgtLoadedCharacter[1].iWins;
                 }
             }
             pObj->iSkillScriptIdx = (WORD)gkgtKgtSystem.kgtCore.pSkillsAlloc[pObj->iSkillIdx].shStartingStepIdx;
@@ -2515,10 +2501,10 @@ void vjmpHandleBattleInterface(void)
            first update below sets them */
         pObj = kgtoNewEngineObject(READ_SCRIPT, 0x65, SYS_STEP(0x4a).shParam1 << 16, SYS_STEP(0x4a).shParam2 << 16);
         pObj->iObjectType = SYSTEM_ENGINE_OBJECT;
-        gpkgtCurrentEngineObject->iWork0166 = (int)pObj;
+        gpkgtCurrentEngineObject->iWork0166 = (intptr_t)pObj;
         pObj = kgtoNewEngineObject(READ_SCRIPT, 0x65, SYS_STEP(0x4b).shParam1 << 16, SYS_STEP(0x4b).shParam2 << 16);
         pObj->iObjectType = SYSTEM_ENGINE_OBJECT;
-        gpkgtCurrentEngineObject->iWork016E = (int)pObj;
+        gpkgtCurrentEngineObject->iWork016E = (intptr_t)pObj;
         gpkgtCurrentEngineObject->iWork0172 = -1;
         gpkgtCurrentEngineObject->iWork016A = -1;
         break;
@@ -2562,7 +2548,7 @@ void vjmpHandleBattleInterface(void)
             } else {
                 iX = SYS_STEP(0x49).shParam1 << 16;
                 pObj = kgtoNewEngineObject(READ_SCRIPT, 0x65, iX, SYS_STEP(0x49).shParam2 << 16);
-                            gpkgtCurrentEngineObject->iWork0176 = (int)pObj;
+                            gpkgtCurrentEngineObject->iWork0176 = (intptr_t)pObj;
                 pObj->iObjectType = STORY_ENGINE_OBJECT;
                 pObj->iSkillIdx = pObj->iStartSkillIdx = (WORD)gkgtLoadedCharacter[gkgtGameState.iTargetPlayer].shSkillIdxStageFacePic;
                 pObj->iPlayerIdx = gkgtGameState.iTargetPlayer;
@@ -2625,8 +2611,8 @@ victory_marks:
         OBJ(gpkgtCurrentEngineObject->iPlayerIdx)->iSkillScriptIdx = (WORD)gkgtKgtSystem.kgtCore.pSkillsAlloc[(WORD)gkgtKgtSystem.shSkillIdxVictoryMarkOn].shStartingStepIdx;
         OBJ(gpkgtCurrentEngineObject->iPlayerIdx)->iImageWaitFrames = 0;
     }
-    if (gpkgtCurrentEngineObject->pWork0162 != (kgtEngineObject *)gkgtLoadedCharacter[1].iWins) {
-        gpkgtCurrentEngineObject->pWork0162 = (kgtEngineObject *)gkgtLoadedCharacter[1].iWins;
+    if (gpkgtCurrentEngineObject->iWork0162 != gkgtLoadedCharacter[1].iWins) {
+        gpkgtCurrentEngineObject->iWork0162 = gkgtLoadedCharacter[1].iWins;
         gpkgtCurrentEngineObject->pWork015E->iSkillIdx = gpkgtCurrentEngineObject->pWork015E->iStartSkillIdx = (WORD)gkgtKgtSystem.shSkillIdxVictoryMarkOn;
         gpkgtCurrentEngineObject->pWork015E->iSkillScriptIdx = (WORD)gkgtKgtSystem.kgtCore.pSkillsAlloc[(WORD)gkgtKgtSystem.shSkillIdxVictoryMarkOn].shStartingStepIdx;
         gpkgtCurrentEngineObject->pWork015E->iImageWaitFrames = 0;
@@ -2662,7 +2648,7 @@ void vjmpUpdateTimerAndUi(void)
         gpkgtCurrentEngineObject->pWork015E = kgtoNewEngineObject(READ_SCRIPT, 0x65, 0, 0);
         gpkgtCurrentEngineObject->pWork015E->iObjectType = SYSTEM_ENGINE_OBJECT;
         gpkgtCurrentEngineObject->pWork015E->iPosX = 0x27100000;
-        gpkgtCurrentEngineObject->iObjectType = (int)kgtoNewEngineObject(READ_SCRIPT, 0x65, 0, 0);
+        gpkgtCurrentEngineObject->iObjectType = (intptr_t)kgtoNewEngineObject(READ_SCRIPT, 0x65, 0, 0);
         OBJ(gpkgtCurrentEngineObject->iObjectType)->iObjectType = SYSTEM_ENGINE_OBJECT;
         OBJ(gpkgtCurrentEngineObject->iObjectType)->iPosX = 0x27100000;
         OBJ(gpkgtCurrentEngineObject->iObjectType)->iImageWaitFrames = 1000000;
@@ -2716,14 +2702,14 @@ void vjmpUpdateTimerAndUi(void)
     } else if (gpkgtCurrentEngineObject->iPlayerIdx < 100) {
         if (gpkgtCurrentEngineObject->iPlayerIdx % 10 != gpkgtCurrentEngineObject->iWork0166) {
             gpkgtCurrentEngineObject->iWork0166 = gpkgtCurrentEngineObject->iPlayerIdx % 10;
-            OBJ(gpkgtCurrentEngineObject->iObjectType)->iPosX = gpkgtCurrentEngineObject->iWork0176 / 2 + gpkgtCurrentEngineObject->iPosX;
+            OBJ(gpkgtCurrentEngineObject->iObjectType)->iPosX = (int)gpkgtCurrentEngineObject->iWork0176 / 2 + gpkgtCurrentEngineObject->iPosX;
             OBJ(gpkgtCurrentEngineObject->iObjectType)->iSkillIdx = OBJ(gpkgtCurrentEngineObject->iObjectType)->iStartSkillIdx = (WORD)(&gkgtKgtSystem.shSkillIdxTimeNumber0)[gpkgtCurrentEngineObject->iPlayerIdx % 10];
             OBJ(gpkgtCurrentEngineObject->iObjectType)->iImageWaitFrames = 0;
             OBJ(gpkgtCurrentEngineObject->iObjectType)->iSkillScriptIdx = (WORD)gkgtKgtSystem.kgtCore.pSkillsAlloc[OBJ(gpkgtCurrentEngineObject->iObjectType)->iSkillIdx].shStartingStepIdx;
         }
         if (gpkgtCurrentEngineObject->iPlayerIdx / 10 % 10 != gpkgtCurrentEngineObject->iWork016A) {
             gpkgtCurrentEngineObject->iWork016A = gpkgtCurrentEngineObject->iPlayerIdx / 10 % 10;
-            gpkgtCurrentEngineObject->pWork015E->iPosX = gpkgtCurrentEngineObject->iPosX - gpkgtCurrentEngineObject->iWork0176 / 2;
+            gpkgtCurrentEngineObject->pWork015E->iPosX = gpkgtCurrentEngineObject->iPosX - (int)gpkgtCurrentEngineObject->iWork0176 / 2;
             gpkgtCurrentEngineObject->pWork015E->iSkillIdx = gpkgtCurrentEngineObject->pWork015E->iStartSkillIdx = (WORD)(&gkgtKgtSystem.shSkillIdxTimeNumber0)[gpkgtCurrentEngineObject->iPlayerIdx / 10 % 10];
             gpkgtCurrentEngineObject->pWork015E->iImageWaitFrames = 0;
             gpkgtCurrentEngineObject->pWork015E->iSkillScriptIdx = (WORD)gkgtKgtSystem.kgtCore.pSkillsAlloc[gpkgtCurrentEngineObject->pWork015E->iSkillIdx].shStartingStepIdx;
@@ -2732,7 +2718,7 @@ void vjmpUpdateTimerAndUi(void)
     } else {
         if (gpkgtCurrentEngineObject->iPlayerIdx % 10 != gpkgtCurrentEngineObject->iWork0166) {
             gpkgtCurrentEngineObject->iWork0166 = gpkgtCurrentEngineObject->iPlayerIdx % 10;
-            OBJ(gpkgtCurrentEngineObject->iObjectType)->iPosX = gpkgtCurrentEngineObject->iWork0176 + gpkgtCurrentEngineObject->iPosX;
+            OBJ(gpkgtCurrentEngineObject->iObjectType)->iPosX = (int)gpkgtCurrentEngineObject->iWork0176 + gpkgtCurrentEngineObject->iPosX;
             OBJ(gpkgtCurrentEngineObject->iObjectType)->iSkillIdx = OBJ(gpkgtCurrentEngineObject->iObjectType)->iStartSkillIdx = (WORD)(&gkgtKgtSystem.shSkillIdxTimeNumber0)[gpkgtCurrentEngineObject->iPlayerIdx % 10];
             OBJ(gpkgtCurrentEngineObject->iObjectType)->iImageWaitFrames = 0;
             OBJ(gpkgtCurrentEngineObject->iObjectType)->iSkillScriptIdx = (WORD)gkgtKgtSystem.kgtCore.pSkillsAlloc[OBJ(gpkgtCurrentEngineObject->iObjectType)->iSkillIdx].shStartingStepIdx;
@@ -2746,7 +2732,7 @@ void vjmpUpdateTimerAndUi(void)
         }
         if (gpkgtCurrentEngineObject->iPlayerIdx / 100 % 10 != gpkgtCurrentEngineObject->iWork016E) {
             gpkgtCurrentEngineObject->iWork016E = gpkgtCurrentEngineObject->iPlayerIdx / 100 % 10;
-            gpkgtCurrentEngineObject->pWork0162->iPosX = gpkgtCurrentEngineObject->iPosX - gpkgtCurrentEngineObject->iWork0176;
+            gpkgtCurrentEngineObject->pWork0162->iPosX = gpkgtCurrentEngineObject->iPosX - (int)gpkgtCurrentEngineObject->iWork0176;
             gpkgtCurrentEngineObject->pWork0162->iSkillIdx = gpkgtCurrentEngineObject->pWork0162->iStartSkillIdx = (WORD)(&gkgtKgtSystem.shSkillIdxTimeNumber0)[gpkgtCurrentEngineObject->iPlayerIdx / 100 % 10];
             gpkgtCurrentEngineObject->pWork0162->iImageWaitFrames = 0;
             gpkgtCurrentEngineObject->pWork0162->iSkillScriptIdx = (WORD)gkgtKgtSystem.kgtCore.pSkillsAlloc[gpkgtCurrentEngineObject->pWork0162->iSkillIdx].shStartingStepIdx;
@@ -2784,9 +2770,9 @@ void vjmpHitComboCounter(void)
         gpkgtCurrentEngineObject->pWork0162 = pObj;
         pObj->iFlags |= 0x40000000;
         /* layout of the digits from the first step of system skill 1 (see above) */
-        uHits = gpkgtCurrentEngineObject->iPlayerIdx;
+        uHits = (int)gpkgtCurrentEngineObject->iPlayerIdx;
         iLayoutFlags = ((BYTE *)&SYS_STEP(1))[1];
-        uRest = gpkgtCurrentEngineObject->iPlayerIdx;
+        uRest = (int)gpkgtCurrentEngineObject->iPlayerIdx;
         iDigitWidth = ((BYTE *)&SYS_STEP(1))[2] << 16;
         iDigits = 0;
         while (uRest > 9) {
@@ -3104,11 +3090,11 @@ void vjmpScreenControl(void)
         gpkgtCurrentEngineObject->iDrawFlag = gpkgtCurrentEngineObject->iDepth;
         /* fall through */
     case 21:
-        gpkgtCurrentEngineObject->pWork015E = (kgtEngineObject *)(((int)gpkgtCurrentEngineObject->pWork015E + (rand() & 1)) & 0x3f);
-        gpkgtCurrentEngineObject->pWork0162 = (kgtEngineObject *)(((int)gpkgtCurrentEngineObject->pWork0162 + (rand() & 1)) & 0x3f);
+        gpkgtCurrentEngineObject->iWork015E = (gpkgtCurrentEngineObject->iWork015E + (rand() & 1)) & 0x3f;
+        gpkgtCurrentEngineObject->iWork0162 = (gpkgtCurrentEngineObject->iWork0162 + (rand() & 1)) & 0x3f;
         gpkgtCurrentEngineObject->iWork0166 = (gpkgtCurrentEngineObject->iWork0166 + (rand() & 1)) & 0x3f;
-        gpkgtCurrentEngineObject->pWork015E = (kgtEngineObject *)32;
-        gpkgtCurrentEngineObject->pWork0162 = (kgtEngineObject *)32;
+        gpkgtCurrentEngineObject->iWork015E = 32;
+        gpkgtCurrentEngineObject->iWork0162 = 32;
         gpkgtCurrentEngineObject->iWork0166 = 32;
         return;
     case 30:    /* blur, strength iPlayerIdx 1..99 back and forth (iObjectType = +1 / -1) */
@@ -4099,8 +4085,9 @@ void vApplyObjectColorTransition(int *pFx)
  * matching scaffolding in the body: the many "if (0) goto boundaryN; boundaryN:;" are empty block
  * boundaries that stop VC6 from moving or forward-substituting code across them; "k = iX" and the split
  * x/y computations (iX = ...; boundary; iX -= ...) reproduce the original's evaluation order; the dead
- * "pBlurTL = 0; ..." in case -8 fixes the order of the pointer loads in the blur loop; pAI indexes the
- * trail as ints ((iSlot + 1) * 4 + field) to get the original's addressing (vc6-matching-notes/matching-techniques.md).
+ * "pBlurTL = 0; ..." in case -8 fixes the order of the pointer loads in the blur loop.  (The matching
+ * code indexed the trail as ints, pAI[(iSlot + 1) * 4 + field], for the original's addressing; the
+ * 64-bit port uses the trail's fields, whose pointers do not fit into ints.)
  */
 void vDrawCurrentEngineObject(void)
 {
@@ -4134,9 +4121,8 @@ void vDrawCurrentEngineObject(void)
     DWORD *pPalEntry;       /* palette conversion: source entry */
     WORD *pLayerTintDst;    /* after-image palette conversion: gwTintedPalette16 entry */
     int iSet;               /* after-image trail number (cAfterImageIdx, 1-based) */
-    int *pAI;               /* the trail as ints: [1] next slot, [2] -> the AI step (pInfo), [3] frames
-                               until the next capture; frame n at [(n + 1) * 4 + 0..3] = x, y (16.16),
-                               flags, image step */
+    unk_0x650_struct *pAI;  /* the trail: iPos next slot, pStep the AI step, iTimer frames until the
+                               next capture, kgtFrames[n] = x, y (16.16), flags, image step */
     kgtImageHeader *pPrevHeader;    /* image of the previous trail frame (not decompressed again) */
     kgtImageHeader *pLayerHeader;
     kgtSkillImageStep *pLayerStep;
@@ -4204,10 +4190,10 @@ void vDrawCurrentEngineObject(void)
            pInfo[4] = 0 switches the trail's drawing off */
         if (gpkgtCurrentEngineObject->cAfterImageIdx != 0) {
             iSet = gpkgtCurrentEngineObject->cAfterImageIdx;
-            pAI = (int *)&gAfterImageLayers[iSet - 1];
-            if (((BYTE *)pAI[2])[4] != 0) {
+            pAI = &gAfterImageTrails[iSet - 1];
+            if (((BYTE *)pAI->pStep)[4] != 0) {
                 iSavedBlend = gpkgtCurrentEngineObject->iColorBlendtype;
-                gpkgtCurrentEngineObject->iColorBlendtype = gAfterImageLayers[iSet - 1].pInfo[5];
+                gpkgtCurrentEngineObject->iColorBlendtype = ((BYTE *)pAI->pStep)[5];
                 iSavedR = gpkgtCurrentEngineObject->iColorRed;
                 iSavedG = gpkgtCurrentEngineObject->iColorGreen;
                 if (0) goto boundary6; boundary6:;
@@ -4216,14 +4202,14 @@ void vDrawCurrentEngineObject(void)
                 pPrevHeader = NULL;
                 iSavedB = gpkgtCurrentEngineObject->iColorBlue;
                 iSavedAOrRed = gpkgtCurrentEngineObject->iColorAlpha;
-                iSlot = (pAI[1] - gAfterImageLayers[iSet - 1].pInfo[3] + 100) % 100;
+                iSlot = (pAI->iPos - ((BYTE *)pAI->pStep)[3] + 100) % 100;
                 if (0) goto boundary9; boundary9:;
-                for (iFrame = 0; iFrame < gAfterImageLayers[iSet - 1].pInfo[3]; iFrame++, iSlot = (iSlot + 1) % 100) {
+                for (iFrame = 0; iFrame < ((BYTE *)pAI->pStep)[3]; iFrame++, iSlot = (iSlot + 1) % 100) {
                     /* frame iSlot: its image step, flip flags (bit 2: mirrored) and position */
-                    pLayerStep = (kgtSkillImageStep *)pAI[(iSlot + 1) * 4 + 3];
+                    pLayerStep = (kgtSkillImageStep *)pAI->kgtFrames[iSlot].pImage;
                     if (0) goto boundary10; boundary10:;
                     if (0) goto boundary11; boundary11:;
-                    bLayerFlip = pAI[(iSlot + 1) * 4 + 2] & 3;
+                    bLayerFlip = pAI->kgtFrames[iSlot].iFlags & 3;
                     if (0) goto boundary12; boundary12:;
                     if (0) goto boundary13; boundary13:;
                     if (pLayerStep != NULL) {
@@ -4255,7 +4241,7 @@ void vDrawCurrentEngineObject(void)
                                 }
                             }
                             /* the frame's colour */
-                            switch (gAfterImageLayers[iSet - 1].pInfo[6]) {
+                            switch (((BYTE *)pAI->pStep)[6]) {
                             case 0:
                                 gpkgtCurrentEngineObject->iColorRed = iSavedR;
                                 gpkgtCurrentEngineObject->iColorGreen = iSavedG;
@@ -4265,17 +4251,17 @@ void vDrawCurrentEngineObject(void)
                             case 3:
                                 if (!(giReverseShakeDirection & 1))
                                     goto fade;
-                                gpkgtCurrentEngineObject->iColorRed = (char)gAfterImageLayers[iSet - 1].pInfo[7];
-                                gpkgtCurrentEngineObject->iColorGreen = (char)gAfterImageLayers[iSet - 1].pInfo[8];
-                                gpkgtCurrentEngineObject->iColorBlue = (char)gAfterImageLayers[iSet - 1].pInfo[9];
-                                gpkgtCurrentEngineObject->iColorAlpha = (char)gAfterImageLayers[iSet - 1].pInfo[10];
+                                gpkgtCurrentEngineObject->iColorRed = (char)((BYTE *)pAI->pStep)[7];
+                                gpkgtCurrentEngineObject->iColorGreen = (char)((BYTE *)pAI->pStep)[8];
+                                gpkgtCurrentEngineObject->iColorBlue = (char)((BYTE *)pAI->pStep)[9];
+                                gpkgtCurrentEngineObject->iColorAlpha = (char)((BYTE *)pAI->pStep)[10];
                                 break;
                             case 1:
-                                gpkgtCurrentEngineObject->iColorRed = (char)gAfterImageLayers[iSet - 1].pInfo[7];
-                                gpkgtCurrentEngineObject->iColorGreen = (char)gAfterImageLayers[iSet - 1].pInfo[8];
-                                gpkgtCurrentEngineObject->iColorBlue = (char)gAfterImageLayers[iSet - 1].pInfo[9];
+                                gpkgtCurrentEngineObject->iColorRed = (char)((BYTE *)pAI->pStep)[7];
+                                gpkgtCurrentEngineObject->iColorGreen = (char)((BYTE *)pAI->pStep)[8];
+                                gpkgtCurrentEngineObject->iColorBlue = (char)((BYTE *)pAI->pStep)[9];
                                 if (0) goto boundary18; boundary18:;
-                                gpkgtCurrentEngineObject->iColorAlpha = (char)gAfterImageLayers[iSet - 1].pInfo[10];
+                                gpkgtCurrentEngineObject->iColorAlpha = (char)((BYTE *)pAI->pStep)[10];
                                 break;
                             case 2:
                             if (0) goto boundary19; boundary19:;
@@ -4287,19 +4273,19 @@ void vDrawCurrentEngineObject(void)
                                    frame's age in percent of the trail length (interval * count) */
                                 if (0) goto boundary23; boundary23:;
                                 if (0) goto boundary24; boundary24:;
-                                iPercent = ((gAfterImageLayers[iSet - 1].pInfo[4] * iFrame + pAI[3]) * 100) / (gAfterImageLayers[iSet - 1].pInfo[3] * gAfterImageLayers[iSet - 1].pInfo[4]);
+                                iPercent = ((((BYTE *)pAI->pStep)[4] * iFrame + pAI->iTimer) * 100) / (((BYTE *)pAI->pStep)[3] * ((BYTE *)pAI->pStep)[4]);
                                 iInv = 100 - iPercent;
-                                gpkgtCurrentEngineObject->iColorRed = ((char)gAfterImageLayers[iSet - 1].pInfo[7] * iInv + iPercent * iSavedR) / 100;
-                                gpkgtCurrentEngineObject->iColorGreen = ((char)gAfterImageLayers[iSet - 1].pInfo[8] * iInv + iPercent * iSavedG) / 100;
-                                gpkgtCurrentEngineObject->iColorBlue = ((char)gAfterImageLayers[iSet - 1].pInfo[9] * iInv + iPercent * iSavedB) / 100;
-                                gpkgtCurrentEngineObject->iColorAlpha = ((char)gAfterImageLayers[iSet - 1].pInfo[10] * iInv + iPercent * iSavedAOrRed) / 100;
+                                gpkgtCurrentEngineObject->iColorRed = ((char)((BYTE *)pAI->pStep)[7] * iInv + iPercent * iSavedR) / 100;
+                                gpkgtCurrentEngineObject->iColorGreen = ((char)((BYTE *)pAI->pStep)[8] * iInv + iPercent * iSavedG) / 100;
+                                gpkgtCurrentEngineObject->iColorBlue = ((char)((BYTE *)pAI->pStep)[9] * iInv + iPercent * iSavedB) / 100;
+                                gpkgtCurrentEngineObject->iColorAlpha = ((char)((BYTE *)pAI->pStep)[10] * iInv + iPercent * iSavedAOrRed) / 100;
                                 break;
                             case 4:
                                 iPercent = rand() % 100;
-                                gpkgtCurrentEngineObject->iColorRed = ((char)gAfterImageLayers[iSet - 1].pInfo[7] * iPercent + (100 - iPercent) * iSavedR) / 100;
-                                gpkgtCurrentEngineObject->iColorGreen = ((char)gAfterImageLayers[iSet - 1].pInfo[8] * iPercent + (100 - iPercent) * iSavedG) / 100;
-                                gpkgtCurrentEngineObject->iColorBlue = ((char)gAfterImageLayers[iSet - 1].pInfo[9] * iPercent + (100 - iPercent) * iSavedB) / 100;
-                                gpkgtCurrentEngineObject->iColorAlpha = ((char)gAfterImageLayers[iSet - 1].pInfo[10] * iPercent + (100 - iPercent) * iSavedAOrRed) / 100;
+                                gpkgtCurrentEngineObject->iColorRed = ((char)((BYTE *)pAI->pStep)[7] * iPercent + (100 - iPercent) * iSavedR) / 100;
+                                gpkgtCurrentEngineObject->iColorGreen = ((char)((BYTE *)pAI->pStep)[8] * iPercent + (100 - iPercent) * iSavedG) / 100;
+                                gpkgtCurrentEngineObject->iColorBlue = ((char)((BYTE *)pAI->pStep)[9] * iPercent + (100 - iPercent) * iSavedB) / 100;
+                                gpkgtCurrentEngineObject->iColorAlpha = ((char)((BYTE *)pAI->pStep)[10] * iPercent + (100 - iPercent) * iSavedAOrRed) / 100;
                                 if (0) goto boundary25; boundary25:;
                                 if (0) goto boundary26; boundary26:;
                                 break;
@@ -4346,16 +4332,16 @@ void vDrawCurrentEngineObject(void)
                             case PLAYER_ENGINE_OBJECT:
                             case STORY_ENGINE_OBJECT:
                             case CHARACTER_ENGINE_OBJECT:
-                                if (pAI[(iSlot + 1) * 4 + 2] & 4) {
-                                    iX = ((DWORD)pLayerHeader->iWidth >> 1) - pLayerStep->shX + pAI[(iSlot + 1) * 4 + 0] / 0x10000 - pLayerHeader->iWidth;
+                                if (pAI->kgtFrames[iSlot].iFlags & 4) {
+                                    iX = ((DWORD)pLayerHeader->iWidth >> 1) - pLayerStep->shX + pAI->kgtFrames[iSlot].iX / 0x10000 - pLayerHeader->iWidth;
                                     if (0) goto boundary31; boundary31:;
                                     bLayerFlip = bLayerFlip ^ 1;
                                 } else {
-                                    iX = pLayerStep->shX - ((DWORD)pLayerHeader->iWidth >> 1) + pAI[(iSlot + 1) * 4 + 0] / 0x10000;
+                                    iX = pLayerStep->shX - ((DWORD)pLayerHeader->iWidth >> 1) + pAI->kgtFrames[iSlot].iX / 0x10000;
                                 }
                                 iY = pLayerStep->shY;
                                 if (0) goto boundary32; boundary32:;
-                                iY += pAI[(iSlot + 1) * 4 + 1] / 0x10000;
+                                iY += pAI->kgtFrames[iSlot].iY / 0x10000;
                                 if (0) goto boundary33; boundary33:;
                                 iY -= pLayerHeader->iHeight;
                                 if (gpkgtCurrentEngineObject->iFlags & 0x40000000) {
@@ -4366,15 +4352,15 @@ void vDrawCurrentEngineObject(void)
                                 iY += giShakeYOffset;
                                 break;
                             case STAGE_ENGINE_OBJECT:
-                                if (pAI[(iSlot + 1) * 4 + 2] & 4) {
-                                    iX = pAI[(iSlot + 1) * 4 + 0] / 0x10000 - pLayerStep->shX - pLayerHeader->iWidth;
+                                if (pAI->kgtFrames[iSlot].iFlags & 4) {
+                                    iX = pAI->kgtFrames[iSlot].iX / 0x10000 - pLayerStep->shX - pLayerHeader->iWidth;
                                     bLayerFlip ^= 1;
                                 } else {
                                     if (0) goto boundary34; boundary34:;
-                                    iX = pAI[(iSlot + 1) * 4 + 0] / 0x10000 + pLayerStep->shX;
+                                    iX = pAI->kgtFrames[iSlot].iX / 0x10000 + pLayerStep->shX;
                                 }
                                 if (0) goto boundary35; boundary35:;
-                                iY = pAI[(iSlot + 1) * 4 + 1] / 0x10000 + pLayerStep->shY;
+                                iY = pAI->kgtFrames[iSlot].iY / 0x10000 + pLayerStep->shY;
                                 if (gpkgtCurrentEngineObject->iFlags & 0x40000000) {
                                     iX -= giCameraX;
                                     iY -= giCameraY;
@@ -4397,13 +4383,13 @@ void vDrawCurrentEngineObject(void)
                                 break;
                             case SYSTEM_ENGINE_OBJECT:
                             case DEMO_ENGINE_OBJECT:
-                                if (pAI[(iSlot + 1) * 4 + 2] & 4) {
-                                    iX = pAI[(iSlot + 1) * 4 + 0] / 0x10000 - pLayerStep->shX - pLayerHeader->iWidth;
+                                if (pAI->kgtFrames[iSlot].iFlags & 4) {
+                                    iX = pAI->kgtFrames[iSlot].iX / 0x10000 - pLayerStep->shX - pLayerHeader->iWidth;
                                     bLayerFlip = bLayerFlip ^ 1;
                                 } else {
-                                    iX = pAI[(iSlot + 1) * 4 + 0] / 0x10000 + pLayerStep->shX;
+                                    iX = pAI->kgtFrames[iSlot].iX / 0x10000 + pLayerStep->shX;
                                 }
-                                iY = pAI[(iSlot + 1) * 4 + 1] / 0x10000 + pLayerStep->shY;
+                                iY = pAI->kgtFrames[iSlot].iY / 0x10000 + pLayerStep->shY;
                                 if (gpkgtCurrentEngineObject->iFlags & 0x40000000) {
                                     iX -= giCameraX;
                                     iY = iY - giCameraY;
@@ -4634,11 +4620,11 @@ void vDrawCurrentEngineObject(void)
                 vBlitImageRect16(&gkgtBitmaps[1],
                                  gpkgtCurrentEngineObject->iPosX / 0x10000 - giCameraX - 0x20,
                                  gpkgtCurrentEngineObject->iPosY / 0x10000 - giCameraY - 0x40,
-                                 0x40, 0x20, (((int)gpkgtCurrentEngineObject->pWork015E >> 2 & 3) + 4) * 0x40, 0x60, 0, 0, 0, 0);
+                                 0x40, 0x20, ((gpkgtCurrentEngineObject->iStateFlags >> 2 & 3) + 4) * 0x40, 0x60, 0, 0, 0, 0);
                 vBlitImageRect16(&gkgtBitmaps[1],
                                  gpkgtCurrentEngineObject->iPosX / 0x10000 - giCameraX - 0x20,
                                  gpkgtCurrentEngineObject->iPosY / 0x10000 - giCameraY - 0x20,
-                                 0x40, 0x20, (((int)gpkgtCurrentEngineObject->pWork015E & 3) + 4) * 0x40, 0x40, 0, 0, 0, 0);
+                                 0x40, 0x20, ((gpkgtCurrentEngineObject->iStateFlags & 3) + 4) * 0x40, 0x40, 0, 0, 0, 0);
             }
             return;
         case STAGE_ENGINE_OBJECT:
@@ -4829,7 +4815,7 @@ void vDrawCurrentEngineObject(void)
         vBlitImageRect16(&gkgtBitmaps[1],
                          gpkgtCurrentEngineObject->iPosX - giCameraX - 0x40,
                          gpkgtCurrentEngineObject->iPosY - giCameraY - 0x40,
-                         0x80, 0x80, gpkgtCurrentEngineObject->iPlayerIdx / 8 * 0x80, gpkgtCurrentEngineObject->iObjectType * 0x80,
+                         0x80, 0x80, (int)gpkgtCurrentEngineObject->iPlayerIdx / 8 * 0x80, (int)gpkgtCurrentEngineObject->iObjectType * 0x80,
                          gpkgtCurrentEngineObject->iPlayerLookingRight * 0x40000000 + 2,
                          gpkgtCurrentEngineObject->iColorRed, gpkgtCurrentEngineObject->iColorGreen, gpkgtCurrentEngineObject->iColorBlue);
         break;
@@ -4842,11 +4828,11 @@ void vDrawCurrentEngineObject(void)
     case -5:    /* iPlayerIdx in small digits at iPosX/iPosY (pixels) */
         if (0) goto boundary127; boundary127:;
         if (0) goto boundary128; boundary128:;
-        vDrawNumberSmall(gpkgtCurrentEngineObject->iPlayerIdx, gpkgtCurrentEngineObject->iPosX, gpkgtCurrentEngineObject->iPosY, 0,
+        vDrawNumberSmall((int)gpkgtCurrentEngineObject->iPlayerIdx, gpkgtCurrentEngineObject->iPosX, gpkgtCurrentEngineObject->iPosY, 0,
                          gpkgtCurrentEngineObject->iColorRed, gpkgtCurrentEngineObject->iColorGreen, gpkgtCurrentEngineObject->iColorBlue);
         break;
     case -6:    /* iPlayerIdx in large digits plus a 96x32 label from text.bmp, camera-relative */
-        vDrawNumberLarge(gpkgtCurrentEngineObject->iPlayerIdx, gpkgtCurrentEngineObject->iPosX - giCameraX, gpkgtCurrentEngineObject->iPosY - giCameraY, 4,
+        vDrawNumberLarge((int)gpkgtCurrentEngineObject->iPlayerIdx, gpkgtCurrentEngineObject->iPosX - giCameraX, gpkgtCurrentEngineObject->iPosY - giCameraY, 4,
                          gpkgtCurrentEngineObject->iColorRed, gpkgtCurrentEngineObject->iColorGreen, gpkgtCurrentEngineObject->iColorBlue);
         vBlitImageRect16(&gkgtBitmaps[1],
                          gpkgtCurrentEngineObject->iPosX - giCameraX + 0x20, gpkgtCurrentEngineObject->iPosY - giCameraY,
@@ -4888,7 +4874,7 @@ void vDrawCurrentEngineObject(void)
     case -10:   /* blur the whole screen iPlayerIdx / 20 times: each pixel becomes the average of
                    itself and its right, lower and lower right neighbours (a quarter of each, with the
                    masks 0xe79c (RGB565) / 0x739c (RGB555) clearing the 2 low bits of every channel) */
-        iBlurPasses = gpkgtCurrentEngineObject->iPlayerIdx / 20;
+        iBlurPasses = (int)gpkgtCurrentEngineObject->iPlayerIdx / 20;
         for (pBlurTL = gpFrameBits; iBlurPasses--; pBlurTL = gpFrameBits) {
             pBlurTR = pBlurTL + 1;
             if (0) goto boundary133; boundary133:;

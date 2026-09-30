@@ -172,7 +172,7 @@ void vMemzeroHitboxArrays(kgtEngineObject *pObj)
 int iAssignPlayerLookingRight(void)
 {
     kgtEngineObject *pObj = gpkgtCurrentEngineObject;
-    int iPlayer = pObj->iPlayerIdx;
+    int iPlayer = (int)pObj->iPlayerIdx;
     int iFacing;
 
     /* guard-button mode: no automatic turning */
@@ -196,7 +196,7 @@ int iAssignPlayerLookingRight(void)
  */
 void vFindNearestEnemyPlayer(void)
 {
-    int iPlayer = gpkgtCurrentEngineObject->iPlayerIdx;
+    int iPlayer = (int)gpkgtCurrentEngineObject->iPlayerIdx;
     int iBestDist = 0x19000000;  /* no enemy yet: 0x19000000 = 6400 pixels in 16.16 */
     int iBestX;
     int iDist;
@@ -292,7 +292,7 @@ void vAddToHealth(kgt_character_struct *pChar, int iLifeAdd)
     kgtEngineObject *pObj;
     kgtStoryEntry *pEntry;
     kgtStoryEntryCpu *pCpu;
-    int *pPlayerIdx;
+    intptr_t *pPlayerIdx;
 
     /* low-life damage reduction (percentages) */
     if (pChar->iHealth <= (BYTE)pChar->cLifeRevThreshold * iLifeMax / 100 && iLifeAdd < 0) {
@@ -337,7 +337,7 @@ void vAddToHealth(kgt_character_struct *pChar, int iLifeAdd)
                     break;
                 case 2:
                     if (pChar->pLastOpponent) {
-                        iPlayer = pChar->pLastOpponent->iPlayerIdx;
+                        iPlayer = (int)pChar->pLastOpponent->iPlayerIdx;
                         vAddToHealth(&gkgtLoadedCharacter[iPlayer], pCpu->cEffectLifeIncrease);
                         vAddToSpecialGauge(iPlayer, pCpu->cEffectSpecialIncrease);
                     }
@@ -351,7 +351,7 @@ void vAddToHealth(kgt_character_struct *pChar, int iLifeAdd)
                 case 2:
                     pPlayerIdx = &pObj->iPlayerIdx;      /* matching: reading through the address keeps the iPlayerIdx load after the RESET_IDX store */
                     pObj->iJumpIdx = RESET_IDX;
-                    iPlayer = *pPlayerIdx - 1;
+                    iPlayer = (int)*pPlayerIdx - 1;
                     /* iPlayer = the defeated player - 1 = its CPU entry; spawn that entry's character anew */
                     pCpu = &gkgtLoadedCharacter[0].kgtStoryEntries[giCurrentStoryStep[giStoryModeSide]].kgtStoryEntryCPUs[iPlayer];
                     if (pCpu->cCharacterIdx) {
@@ -481,7 +481,7 @@ void vAdjustHitboxes(void)
                     continue;
                 if (pObj->iPlayerIdx == pOther->iPlayerIdx)
                     continue;
-                if ((int)pOther->pWork015E & 8)  /* OBJ_FLAGS: in a hit reaction */
+                if (pOther->iStateFlags & 8)  /* OBJ_FLAGS: in a hit reaction */
                     continue;
                 if (!(*(int *)&gkgtLoadedCharacter[pObj->iPlayerIdx].cEnemyBitmask & (1 << pOther->iPlayerIdx)))
                     continue;
@@ -502,7 +502,7 @@ void vAdjustHitboxes(void)
                         continue;
                     /* player 1 is fighting it: show it as the target for 1000 frames */
                     if (pObj->iPlayerIdx == 0) {
-                        gkgtGameState.iTargetPlayer = pOther->iPlayerIdx;
+                        gkgtGameState.iTargetPlayer = (int)pOther->iPlayerIdx;
                         gkgtGameState.dwTargetPlayerTimer = 1000;
                     }
                     /* two powerless boxes just cancel each other */
@@ -637,7 +637,7 @@ void vHandleHitboxEffects(void)
                 if (pOther->iJumpIdx != READ_SCRIPT) goto no_hit;
                 if ((pOther->iLine ^ pObj->iLine) & 1) goto no_hit;
                 if (pObj->iOwnerIdx == pOther->iOwnerIdx) goto no_hit;
-                iPlayer = pObj->iPlayerIdx;
+                iPlayer = (int)pObj->iPlayerIdx;
                 if (!(*(int *) & gkgtLoadedCharacter[iPlayer].cEnemyBitmask &(1 << pOther->iPlayerIdx))) goto no_hit;
                 if (pOther->iLine & 2) goto no_hit;
                 /* players: FA flags 0x10 / 0x20 miss grounded / airborne targets, 8 misses a guarding target (0xc),
@@ -684,7 +684,7 @@ void vHandleHitboxEffects(void)
                     }
                     /* player 1 hit it: show it as the target for 1000 frames */
                     if (pObj->iPlayerIdx == 0) {
-                        gkgtGameState.iTargetPlayer = pOther->iPlayerIdx;
+                        gkgtGameState.iTargetPlayer = (int)pOther->iPlayerIdx;
                         gkgtGameState.dwTargetPlayerTimer = 1000;
                     }
                     if (gkgtLoadedCharacter[pOther->iPlayerIdx].bUseStoredInput) iInput = *(int *) & gkgtLoadedCharacter[pOther->iPlayerIdx].cStoredInput;
@@ -805,8 +805,8 @@ void vHandleHitboxEffects(void)
                                 iJunction =(BYTE) gkgtKgtSystem.cStiffTimeHit;
                                 pOther->iOpponentDowntimeInFrames = iJunction;
                                 pObj->iOpponentDowntimeInFrames = iJunction;
-                                vAddToSpecialGauge(pObj->iPlayerIdx, gkgtLoadedCharacter[iPlayer].shSpecialGaugeIncreaseOnAttack);
-                                vAddToSpecialGauge(pOther->iPlayerIdx, pOtherChar->shSpecialGaugeIncreaseOnHit);
+                                vAddToSpecialGauge((int)pObj->iPlayerIdx, gkgtLoadedCharacter[iPlayer].shSpecialGaugeIncreaseOnAttack);
+                                vAddToSpecialGauge((int)pOther->iPlayerIdx, pOtherChar->shSpecialGaugeIncreaseOnHit);
                                 OBJ_FLAGS(pOther) =(OBJ_FLAGS(pOther) & ~4) | 8;
                                 /* combo correction: cCharacterRev percent less per hit already in the combo (at least 1),
                                    then the hurt box's damage percent (FD cFlags2, at least 1) */
@@ -822,7 +822,7 @@ void vHandleHitboxEffects(void)
                             if (* pComboCount > 1) {
                                 pNew = kgtoNewEngineObject(HIT_COMBO_COUNTER, 0x5e,((iOtherX << 16)), iOtherY << 16);
                                 pNew->iPlayerIdx = * pComboCount;
-                                pNew->pWork015E =(kgtEngineObject *) pComboCount;
+                                pNew->pWork015E = (kgtEngineObject *)pComboCount;
                                 pNew->iFlags |= 0x40000000;
                                 if (0) iSetDebugInfo("%d", * pComboCount);  /* matching: dead call that keeps the %d literal in .data */
                             }
@@ -837,9 +837,9 @@ void vHandleHitboxEffects(void)
                         /* the target remembers a player attacker, or an object that follows its parent, for the
                            screen-edge push-back (vHandleHitMovements) */
                         if (pObj->iObjectType == PLAYER_ENGINE_OBJECT) {
-                            pOtherChar->iLastAttacker =(int) pObj;
+                            pOtherChar->pLastAttacker = pObj;
                         } else {
-                            if (pObj->iFlags & 0x20000000) pOtherChar->iLastAttacker =(int) pObj;
+                            if (pObj->iFlags & 0x20000000) pOtherChar->pLastAttacker = pObj;
                         }
                         break;
                         case STORY_ENGINE_OBJECT :
@@ -944,7 +944,7 @@ void vHandleHitMovements(void)
                 bDead = 1;
             /* apply the push-back collected last frame */
             pObj->iPosX += gkgtLoadedCharacter[pObj->iPlayerIdx].iPushBackX;
-            iPlayer = pObj->iPlayerIdx;
+            iPlayer = (int)pObj->iPlayerIdx;
             gkgtLoadedCharacter[iPlayer].iPushBackX = 0;
             if ((gkgtLoadedCharacter[iPlayer].iThrowFlags & 0x10)  /* throw flag 0x10 (from script command RC) */
                 && (pThrown = gkgtLoadedCharacter[iPlayer].pLastOpponent) != NULL
@@ -979,7 +979,7 @@ void vHandleHitMovements(void)
                        attacker is itself in a hit reaction */
                     if (pObj->iPosX < 0x320000) {
                         if (!bDead && (OBJ_FLAGS(pObj) & 8)
-                            && (pAttacker = (kgtEngineObject *)gkgtLoadedCharacter[iPlayer].iLastAttacker) != NULL
+                            && (pAttacker = gkgtLoadedCharacter[iPlayer].pLastAttacker) != NULL
                             && (OBJ_FLAGS(pAttacker) & 0xc) != 8
                             && (iPush = 0x320000 - pObj->iPosX) > 0)
                             gkgtLoadedCharacter[pAttacker->iPlayerIdx].iPushBackX += iPush;
@@ -988,7 +988,7 @@ void vHandleHitMovements(void)
                     }
                     if (pObj->iPosX > 0x4ce0000) {
                         if (!bDead && (OBJ_FLAGS(pObj) & 8)
-                            && (pAttacker = (kgtEngineObject *)gkgtLoadedCharacter[pObj->iPlayerIdx].iLastAttacker) != NULL
+                            && (pAttacker = gkgtLoadedCharacter[pObj->iPlayerIdx].pLastAttacker) != NULL
                             && (OBJ_FLAGS(pAttacker) & 0xc) != 8
                             && (iPush = pObj->iPosX - 0x4ce0000) > 0)
                             gkgtLoadedCharacter[pAttacker->iPlayerIdx].iPushBackX -= iPush;
@@ -1002,7 +1002,7 @@ void vHandleHitMovements(void)
                 /* screen edges: camera x + 50 and camera x + 590 pixels (the screen is 640 wide) */
                 if (pObj->iPosX - giCameraX * 0x10000 < 0x320000) {
                     if (!bDead && (OBJ_FLAGS(pObj) & 8)
-                        && (pAttacker = (kgtEngineObject *)gkgtLoadedCharacter[iPlayer].iLastAttacker) != NULL
+                        && (pAttacker = gkgtLoadedCharacter[iPlayer].pLastAttacker) != NULL
                         && (OBJ_FLAGS(pAttacker) & 0xc) != 8
                         && (iPush = (0x32 - giCameraX) * 0x10000 - pObj->iPosX) > 0)
                         gkgtLoadedCharacter[pAttacker->iPlayerIdx].iPushBackX += iPush;
@@ -1011,7 +1011,7 @@ void vHandleHitMovements(void)
                 }
                 if (pObj->iPosX - giCameraX * 0x10000 > 0x24e0000) {
                     if (!bDead && (OBJ_FLAGS(pObj) & 8)
-                        && (pAttacker = (kgtEngineObject *)gkgtLoadedCharacter[pObj->iPlayerIdx].iLastAttacker) != NULL
+                        && (pAttacker = gkgtLoadedCharacter[pObj->iPlayerIdx].pLastAttacker) != NULL
                         && (OBJ_FLAGS(pAttacker) & 0xc) != 8
                         && (iPush = pObj->iPosX - (giCameraX + 0x24e) * 0x10000) > 0)
                         gkgtLoadedCharacter[pAttacker->iPlayerIdx].iPushBackX -= iPush;
@@ -1245,7 +1245,7 @@ int iHandlePlayerCommandSequence(int iCommandIdx)
     int iClearPos;
     kgtEngineObject *pStackPad1;  /* unused */
 
-    iPlayer = gpkgtCurrentEngineObject->iPlayerIdx;
+    iPlayer = (int)gpkgtCurrentEngineObject->iPlayerIdx;
     if (gkgtGameState.dwRoundPhase != 1)
         return 0;
     pInputs = giInputBuffer[iPlayer];
@@ -1493,7 +1493,7 @@ int process_COM_skillblock(kgtSkill *pSkill)
     int iChecks;
     int iButtons;
 
-    iPlayer = gpkgtCurrentEngineObject->iPlayerIdx;
+    iPlayer = (int)gpkgtCurrentEngineObject->iPlayerIdx;
     pInputs = giInputBuffer[iPlayer];
     if (pStep->cTime) {
         iFramesLeft = pStep->cTime;
@@ -1597,7 +1597,7 @@ int vHandleMovementSkills(void)
     kgt_character_struct *pChar;
     int iStackPad1;  /* unused */
 
-    iPlayer = gpkgtCurrentEngineObject->iPlayerIdx;
+    iPlayer = (int)gpkgtCurrentEngineObject->iPlayerIdx;
     pChar = &gkgtLoadedCharacter[iPlayer];
     dwInput = giInputBuffer[iPlayer][giInputBufferPos];
     bGuardButton = pChar->iOptionFlags & 8;
@@ -1812,7 +1812,7 @@ void vHandleCpuCommands(void)
     DWORD dwInput;
     char szDebug[256];  /* debug text of the current step (built but never shown) */
 
-    iPlayerIdx = gpkgtCurrentEngineObject->iPlayerIdx;
+    iPlayerIdx = (int)gpkgtCurrentEngineObject->iPlayerIdx;
     pChar = &gkgtLoadedCharacter[iPlayerIdx];
     if (!pChar->bCpuControlled)
         return;
@@ -1821,7 +1821,7 @@ void vHandleCpuCommands(void)
         vMemzero(giInputBuffer[iPlayerIdx], sizeof(giInputBuffer[0]));
         return;
     }
-    iOppPlayer = pChar->pNearestEnemy->iPlayerIdx;
+    iOppPlayer = (int)pChar->pNearestEnemy->iPlayerIdx;
     pOppChar = &gkgtLoadedCharacter[iOppPlayer];
 
     switch (pChar->iCpuMode) {
@@ -1982,7 +1982,7 @@ void vProcessInputsIntoSkills(void)
     int iSkillIdx;
     kgtSkill *pStep;
 
-    iPlayerIdx = gpkgtCurrentEngineObject->iPlayerIdx;
+    iPlayerIdx = (int)gpkgtCurrentEngineObject->iPlayerIdx;
     pChar = &gkgtLoadedCharacter[iPlayerIdx];
     if (gkgtGameState.dwRoundPhase == 2 && !(gpkgtCurrentEngineObject->iStateFlags & 0xc)
         && gpkgtCurrentEngineObject->iPosY == gpkgtCurrentEngineObject->iGroundY
@@ -2096,12 +2096,12 @@ void vCheckIfDrawThenMove(void)
     DWORD dwInput;
     int iPlayerIdx;
 
-    iPlayerIdx = gpkgtCurrentEngineObject->iPlayerIdx;
+    iPlayerIdx = (int)gpkgtCurrentEngineObject->iPlayerIdx;
     pChar = &gkgtLoadedCharacter[iPlayerIdx];
     dwInput = giInputBuffer[iPlayerIdx][giInputBufferPos];
     vResetReactionSkillBlock(gpkgtCurrentEngineObject);
     iResetDsSkillIndices();
-    pChar->iLastAttacker = 0;
+    pChar->pLastAttacker = NULL;
     /* 1 won, 2 lost, 3 draw: the pose skill as an action (OBJ_FLAGS 4) */
     switch (pChar->iRoundResult) {
     case 1:
@@ -2220,9 +2220,73 @@ int process_COM_skillblock(kgtSkill *pSkill);
 /* the current object's after-image trail, gAfterImageTrails[cAfterImageIdx - 1], addressed as the original
    does: byte offset i = cAfterImageIdx * sizeof from the element before the array */
 #define FX (*(unk_0x650_struct *)((char *)gAfterImageTrails + i - sizeof(unk_0x650_struct)))
-/* one frame of the after-image trail (FX.aiData[k*4 .. k*4+3]); frame 0 is the trail's own header,
-   frames 1-100 the ring: position (16.16), flags (image flip bit | facing * 4), image step (as int) */
-typedef struct { int iX, iY, iFlags, pImage; } kgtTrailFrame;
+/* the trail's frames are FX.kgtFrames (kgtTrailFrame, kgt_types.h): position (16.16), flags (image
+   flip bit | facing * 4), image step */
+
+/*
+ * The owner of a system, demo or stage object's script is its file's structure, which vjmpReadScript
+ * views as a kgt_character_struct (pOwner): a few script commands (GL, EB, C, V) then use character
+ * fields that lie beyond the kgt_core, i.e. in the original at the address of the structure + the
+ * field's offset, which is in the system file's lists (system owner), in the system file's palettes
+ * (demo owner, whose kgt_demo_file ends long before) or in the after-image trails (stage owner).  To
+ * reach the same bytes in every build, those accesses go to the original's address through
+ * pBssAddr32 (game_bss.c); for players and their objects they are ordinary field accesses.  (In the
+ * i686 build both ways are the same bytes.)
+ */
+#define OWNER_OFS_pLastOpponent   0xdef9    /* the original's offsets of the fields used this way */
+#define OWNER_OFS_iHealth         0xdf05
+#define OWNER_OFS_iLastCommandIdx 0xdf55
+#define OWNER_OFS_cCancelType     0xdf91
+#define OWNER_OFS_shVarA          0xdf97
+#if !defined(_WIN64)
+_Static_assert(offsetof(kgt_character_struct, pLastOpponent) == OWNER_OFS_pLastOpponent
+               && offsetof(kgt_character_struct, iHealth) == OWNER_OFS_iHealth
+               && offsetof(kgt_character_struct, iLastCommandIdx) == OWNER_OFS_iLastCommandIdx
+               && offsetof(kgt_character_struct, cCancelType) == OWNER_OFS_cCancelType
+               && offsetof(kgt_character_struct, shVarA) == OWNER_OFS_shVarA, "owner view offsets");
+#endif
+
+/* the original address of the owner structure of the current object's script, 0 for a character */
+static uint32_t uOwnerAddr32(void)
+{
+    switch (gpkgtCurrentEngineObject->iObjectType) {
+    case SYSTEM_ENGINE_OBJECT: return 0x433240;     /* gkgtKgtSystem */
+    case DEMO_ENGINE_OBJECT:   return 0x425a60;     /* gkgtLoadedDemo */
+    case STAGE_ENGINE_OBJECT:  return 0x445740;     /* gkgtLoadedStage */
+    }
+    return 0;
+}
+
+/* byte uOfs of the owner viewed as a kgt_character_struct (original offset), for a non-character owner */
+static unsigned char *pOwnerByte(uint32_t uOfs)
+{
+    static unsigned char bDummy;
+    unsigned char *p = pBssAddr32(uOwnerAddr32() + uOfs);
+
+    if (p == NULL) {    /* (not reached: all such offsets are inside known variables) */
+        bDummy = 0;
+        p = &bDummy;
+    }
+    return p;
+}
+
+static uint32_t uOwnerRead(uint32_t uOfs, int iBytes)
+{
+    uint32_t u = 0;
+    int i;
+
+    for (i = iBytes - 1; i >= 0; i--)
+        u = (u << 8) | *pOwnerByte(uOfs + i);
+    return u;
+}
+
+static void vOwnerWrite(uint32_t uOfs, uint32_t u, int iBytes)
+{
+    int i;
+
+    for (i = 0; i < iBytes; i++, u >>= 8)
+        *pOwnerByte(uOfs + i) = (unsigned char)u;
+}
 
 /*
  * Handler of READ_SCRIPT engine objects (engine jump table): runs the object's skill script.
@@ -2271,6 +2335,9 @@ void vjmpReadScript(void)
        reuses the previous V step's value, or a dummy variable) */
     short shNoVar = 0;
     short shValue = 0, *pVar = &shNoVar;
+    short shOwnerVar = 0;   /* V: a variable of a non-character owner (see pOwnerByte) */
+    int bOwnerVar = 0;      /* pVar is &shOwnerVar, for the owner's bytes at uOwnerVarOfs */
+    uint32_t uOwnerVarOfs = 0;
     int iOppLife;
     char szMsg[256];
 
@@ -2356,12 +2423,12 @@ void vjmpReadScript(void)
                     if (!(pCpu->uBitmask & 0x200))
                         gpkgtCurrentEngineObject->iPlayerLookingRight = 1;
                 }
-                gpkgtCurrentEngineObject->iOwnerIdx = gpkgtCurrentEngineObject->iPlayerIdx;
+                gpkgtCurrentEngineObject->iOwnerIdx = (int)gpkgtCurrentEngineObject->iPlayerIdx;
                 break;
             case GAME_MODE_VS_SINGLE:
             case GAME_MODE_VS_TEAM:
                 pOwner->iHealth = pOwner->dwLifeGaugeMax;
-                gpkgtCurrentEngineObject->iOwnerIdx = gpkgtCurrentEngineObject->iPlayerIdx;
+                gpkgtCurrentEngineObject->iOwnerIdx = (int)gpkgtCurrentEngineObject->iPlayerIdx;
                 /* versus: every other player is an enemy; player 1 starts at x 390, the others at x 890 facing left */
                 pOwner->iEnemyBitmask = -1 - (1 << gpkgtCurrentEngineObject->iPlayerIdx);
                 if (gpkgtCurrentEngineObject->iPlayerIdx != 0) {
@@ -2405,7 +2472,7 @@ void vjmpReadScript(void)
             pOwner->iThrowFlags = 0;
             pOwner->iRoundResult = 0;
             pOwner->iPushBackX = 0;
-            pOwner->iLastAttacker = 0;
+            pOwner->pLastAttacker = NULL;
             pOwner->bImageShown = 0;
             pOwner->iWinPoints = 0;
             pOwner->iHasCrouchAdvance = 0;
@@ -2467,7 +2534,7 @@ void vjmpReadScript(void)
                 pOwner->pMNumberObjs[k] = NULL;
             break;
         case STORY_ENGINE_OBJECT:
-            gpkgtCurrentEngineObject->iOwnerIdx = gpkgtCurrentEngineObject->iPlayerIdx;
+            gpkgtCurrentEngineObject->iOwnerIdx = (int)gpkgtCurrentEngineObject->iPlayerIdx;
             break;
         case SYSTEM_ENGINE_OBJECT:
         case DEMO_ENGINE_OBJECT:
@@ -2515,11 +2582,10 @@ void vjmpReadScript(void)
             /* every cInterval frames store a frame in the ring of 100 */
             if (--FX.iTimer < 0) {
                 FX.iTimer = ((kgtScriptStep *)FX.pStep)->ai.cInterval;
-                pFlash = (void *)&FX;  /* matching: frame iPos + 1 through a pointer reproduces the original's address arithmetic */
-                ((kgtTrailFrame *)pFlash)[iPos + 1].iX = gpkgtCurrentEngineObject->iPosX;
-                ((kgtTrailFrame *)pFlash)[iPos + 1].iY = gpkgtCurrentEngineObject->iPosY;
-                ((kgtTrailFrame *)pFlash)[iPos + 1].iFlags = ((((kgtScriptStep *)pLastImage)->image.wImage >> 14) & 1) + gpkgtCurrentEngineObject->iPlayerLookingRight * 4;
-                ((kgtTrailFrame *)pFlash)[iPos + 1].pImage = (int)pLastImage;
+                FX.kgtFrames[iPos].iX = gpkgtCurrentEngineObject->iPosX;
+                FX.kgtFrames[iPos].iY = gpkgtCurrentEngineObject->iPosY;
+                FX.kgtFrames[iPos].iFlags = ((((kgtScriptStep *)pLastImage)->image.wImage >> 14) & 1) + gpkgtCurrentEngineObject->iPlayerLookingRight * 4;
+                FX.kgtFrames[iPos].pImage = pLastImage;
                 FX.iPos = (FX.iPos + 1) % 100;
             }
         }
@@ -2589,7 +2655,7 @@ void vjmpReadScript(void)
                 && !(gpkgtCurrentEngineObject->iFlags & 0x20000000))
                 vStoryHitboxCheck();
             if (0)      /* debug output, disabled in the release (the format stays in .data) */
-                sprintf(szMsg, "OBJ\217\301\226\305 / %d , %d / %d", gpkgtCurrentEngineObject->iPosX, gpkgtCurrentEngineObject->iPosY, gpkgtCurrentEngineObject->iPlayerIdx);   /* OBJ消滅 (object deleted) */
+                sprintf(szMsg, "OBJ\217\301\226\305 / %d , %d / %d", gpkgtCurrentEngineObject->iPosX, gpkgtCurrentEngineObject->iPosY, (int)gpkgtCurrentEngineObject->iPlayerIdx);   /* OBJ消滅 (object deleted) */
             /* a follower goes with its parent */
             if ((gpkgtCurrentEngineObject->iFlags & 0x20000000) && gpkgtCurrentEngineObject->pParent->iJumpIdx == RESET_IDX)
                 vStoryHitboxCheck();
@@ -2627,7 +2693,7 @@ void vjmpReadScript(void)
     while (iStepCount) {
         /* a script that never reaches an image step: report it and delete the object */
         if (++iStepCount > 300) {
-            sprintf(szMsg, "ScriptMainLoopError %d %d - nd:%d step:%d", gpkgtCurrentEngineObject->iPlayerIdx, gpkgtCurrentEngineObject->iObjectType,
+            sprintf(szMsg, "ScriptMainLoopError %d %d - nd:%d step:%d", (int)gpkgtCurrentEngineObject->iPlayerIdx, (int)gpkgtCurrentEngineObject->iObjectType,
                     gpkgtCurrentEngineObject->iSkillIdx, gpkgtCurrentEngineObject->iSkillScriptIdx - (WORD)pOwner->kgtCore.pSkillsAlloc[gpkgtCurrentEngineObject->iSkillIdx + 1].shStartingStepIdx);
             iSetDebugInfo(szMsg, 0x8080ff);
             goto destroy;
@@ -3105,18 +3171,20 @@ clear_box:
         case 0x11:      /* GL: life gauge check */
             /* flag 1: branch while life <= wValue, else while life >= wValue; a branch to skill 0 takes a
                follow-up command instead (iHandlePlayerCommandSequence from the last command) */
+            /* (the life of a non-character owner is read where the original reads it, see pOwnerByte) */
+            iValue = uOwnerAddr32() ? (int)uOwnerRead(OWNER_OFS_iHealth, 4) : pOwner->iHealth;
             if (pStep->gl.cFlags & 1) {
-                if (pOwner->iHealth > pStep->gl.wValue)
+                if (iValue > pStep->gl.wValue)
                     goto next_step;
             } else {
-                if (pOwner->iHealth < pStep->gl.wValue || !pStep->gl.wSkill)
+                if (iValue < pStep->gl.wValue || !pStep->gl.wSkill)
                     goto next_step;
             }
             gpkgtCurrentEngineObject->iSkillIdx = pStep->gl.wSkill;
             gpkgtCurrentEngineObject->iSkillScriptIdx = (WORD)pOwner->kgtCore.pSkillsAlloc[gpkgtCurrentEngineObject->iSkillIdx].shStartingStepIdx + pStep->gl.cStep - 1;
             if (gpkgtCurrentEngineObject->iSkillIdx)
                 goto next_step;
-            i = iHandlePlayerCommandSequence(pOwner->iLastCommandIdx);
+            i = iHandlePlayerCommandSequence(uOwnerAddr32() ? (int)uOwnerRead(OWNER_OFS_iLastCommandIdx, 4) : pOwner->iLastCommandIdx);
             if (!i)
                 goto next_step;
             gpkgtCurrentEngineObject->iSkillIdx = i;
@@ -3129,7 +3197,7 @@ clear_box:
             iOppLife = pStep->gc.shOppLife;
             if (iX)
                 vAddToHealth(pChar, iX);
-            vAddToSpecialGauge(gpkgtCurrentEngineObject->iPlayerIdx, pStep->gc.shSpecial);
+            vAddToSpecialGauge((int)gpkgtCurrentEngineObject->iPlayerIdx, pStep->gc.shSpecial);
             /* then the opponent: the last one, else the nearest enemy */
             if (pChar->pLastOpponent)
                 pChar = &gkgtLoadedCharacter[pChar->pLastOpponent->iPlayerIdx];
@@ -3140,7 +3208,7 @@ clear_box:
             if (pChar) {
                 if (iOppLife)
                     vAddToHealth(pChar, iOppLife);
-                vAddToSpecialGauge(pChar->pkgtoSelf->iPlayerIdx, pStep->gc.shOppSpecial);
+                vAddToSpecialGauge((int)pChar->pkgtoSelf->iPlayerIdx, pStep->gc.shOppSpecial);
             }
             goto next_step;
 
@@ -3168,9 +3236,11 @@ clear_box:
                     pFlash->iDuration = pStep->eb.wDuration;
                     pFlash->iTimeLeft = pStep->eb.wDuration;
                 }
-                if ((pStep->eb.cFlags & 2) && pOwner->pLastOpponent) {
+                /* (the last opponent of a non-character owner is the original's 4 bytes there, see pOwnerByte) */
+                pObj = uOwnerAddr32() ? (kgtEngineObject *)(uintptr_t)uOwnerRead(OWNER_OFS_pLastOpponent, 4) : pOwner->pLastOpponent;
+                if ((pStep->eb.cFlags & 2) && pObj) {
                     /* opponent side */
-                    pFlash = (kgtFlash *)&gkgtLoadedCharacter[pOwner->pLastOpponent->iPlayerIdx].flash;
+                    pFlash = (kgtFlash *)&gkgtLoadedCharacter[pObj->iPlayerIdx].flash;
                     pFlash->iType = pStep->eb.cFlash;
                     pFlash->iRed = pStep->eb.cRed;
                     pFlash->iGreen = pStep->eb.cGreen;
@@ -3269,7 +3339,7 @@ clear_box:
                for cOpp frames; each keeps its current input for the hit checks */
             if (gpkgtCurrentEngineObject->iObjectType == PLAYER_ENGINE_OBJECT && pStep->ps.cSelf) {
                 gpkgtCurrentEngineObject->iOpponentDowntimeInFrames += pStep->ps.cSelf;
-                i = gpkgtCurrentEngineObject->iPlayerIdx;
+                i = (int)gpkgtCurrentEngineObject->iPlayerIdx;
                 gkgtLoadedCharacter[i].dwStoredInput = giInputBuffer[i][giInputBufferPos];
                 gkgtLoadedCharacter[i].bUseStoredInput = 1;
                 for (j = 0, pObj = gkgtEngineObjects; j < 1024; j++, pObj++) {
@@ -3293,21 +3363,44 @@ clear_box:
             break;
 
         case 0x1e:      /* C: cancel condition */
+            if (uOwnerAddr32()) {
+                /* a non-character owner: the original's 6 bytes there (see pOwnerByte) */
+                for (i = 0; i < 6; i++)
+                    vOwnerWrite(OWNER_OFS_cCancelType + i, pStep->cBytes[i], 1);
+                break;
+            }
             *(kgtCancelBlock *)&pOwner->cCancelType = *(kgtCancelBlock *)pStep;  /* code, cCancelFlags, cCancelLevelMin, wCancelSkillIdx, cCancelLevelMax */
             break;
 
         case 0x1f:      /* V: variable */
             /* cVar / cSrc: bits 6-7 scope (0 object, 1 owner, 2 system), bits 0-5 index; cSrc scope 3 is a
                value: 0/1 position, 2/3 camera, 4/5 parent position (pixels), 6 game timer / 100, 7 round */
+            /* a non-character owner's variables (scope 1) are the original's bytes there (see
+               pOwnerByte): read into shOwnerVar, written back below (also when a later step without a
+               variable keeps using it, as pVar does) */
             switch (pStep->var.cVar >> 6) {
-            case 0: pVar = &gpkgtCurrentEngineObject->shVarA + (pStep->var.cVar & 0x3f); break;
-            case 1: pVar = &pOwner->shVarA + (pStep->var.cVar & 0x3f); break;
-            case 2: pVar = &gshSystemVariables[pStep->var.cVar & 0x3f]; break;
+            case 0: pVar = &gpkgtCurrentEngineObject->shVarA + (pStep->var.cVar & 0x3f); bOwnerVar = 0; break;
+            case 1:
+                if (uOwnerAddr32()) {
+                    bOwnerVar = 1;
+                    uOwnerVarOfs = OWNER_OFS_shVarA + (pStep->var.cVar & 0x3f) * 2;
+                    pVar = &shOwnerVar;
+                    break;
+                }
+                pVar = &pOwner->shVarA + (pStep->var.cVar & 0x3f); bOwnerVar = 0; break;
+            case 2: pVar = &gshSystemVariables[pStep->var.cVar & 0x3f]; bOwnerVar = 0; break;
             }
+            if (bOwnerVar)
+                shOwnerVar = (short)uOwnerRead(uOwnerVarOfs, 2);
             if (pStep->var.cFlags & 0x80) {
                 switch (pStep->var.cSrc >> 6) {
                 case 0: shValue = (&gpkgtCurrentEngineObject->shVarA)[pStep->var.cSrc & 0x3f]; break;
-                case 1: shValue = (&pOwner->shVarA)[pStep->var.cSrc & 0x3f]; break;
+                case 1:
+                    if (uOwnerAddr32()) {
+                        shValue = (short)uOwnerRead(OWNER_OFS_shVarA + (pStep->var.cSrc & 0x3f) * 2, 2);
+                        break;
+                    }
+                    shValue = (&pOwner->shVarA)[pStep->var.cSrc & 0x3f]; break;
                 case 2: shValue = gshSystemVariables[pStep->var.cSrc & 0x3f]; break;
                 case 3:
                     switch (pStep->var.cSrc & 0x3f) {
@@ -3340,6 +3433,8 @@ clear_box:
                 *pVar = iValue;
                 break;
             }
+            if (bOwnerVar && (pStep->var.cFlags & 3))
+                vOwnerWrite(uOwnerVarOfs, (WORD)shOwnerVar, 2);
             switch ((pStep->var.cFlags >> 2) & 3) {
             case 1:
                 if (*pVar != pStep->var.shCompare)
@@ -3416,7 +3511,7 @@ clear_box:
             gAfterImageTrails[i].iPos = 0;
             gAfterImageTrails[i].pStep = (kgtSkill *)pStep;
             gAfterImageTrails[i].iTimer = 0;
-            memset(&gAfterImageTrails[i].aiData[4], 0, 400 * sizeof(int));  /* clear the 100 frames (kgtTrailFrame, 4 ints each) */
+            memset(gAfterImageTrails[i].kgtFrames, 0, sizeof(gAfterImageTrails[i].kgtFrames));  /* clear the 100 frames */
 
 
             break;
