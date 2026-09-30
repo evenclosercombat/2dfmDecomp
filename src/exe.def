@@ -1,0 +1,5 @@
+; exe.def - module-definition file passed to LINK by build.py (/def:).
+; The original VC6 project ("exe") linked with a .def file that exports nothing.
+; LINK still emits an (empty) export directory named after the output file, exe.exe,
+; and records the generated export object in the Rich header (Linker600).
+EXPORTS
