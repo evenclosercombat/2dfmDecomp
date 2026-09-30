@@ -12,11 +12,11 @@
 /* ---- externs not (yet) in globals.h / protos.h ---- */
 extern int giCdTrack;                       /* 0x41e404: CD track to play, -1 = none */
 extern char gszCdDrive[];                   /* 0x41e408: "X:" drive of the CD */
-extern MCIDEVICEID guCdAudioDeviceId;       /* 0x424720: MCI device of the CD audio */
-extern int gbCdAudioOpen;                   /* 0x424724: the CD audio device is open */
-extern int giDiscLoopFlag;                  /* 0x424728: loop the CD track (checked on MM_MCINOTIFY) */
-extern int giCdAudioError;                  /* 0x42472c: CD audio failed, do not try again */
-extern int giCdAudioRequested;              /* 0x424734: a CD track has been requested */
+#define guCdAudioDeviceId BSS(MCIDEVICEID, guCdAudioDeviceId)  /* 0x424720: MCI device of the CD audio */
+#define gbCdAudioOpen BSS(int, gbCdAudioOpen)      /* 0x424724: the CD audio device is open */
+#define giDiscLoopFlag BSS(int, giDiscLoopFlag)    /* 0x424728: loop the CD track (checked on MM_MCINOTIFY) */
+#define giCdAudioError BSS(int, giCdAudioError)    /* 0x42472c: CD audio failed, do not try again */
+#define giCdAudioRequested BSS(int, giCdAudioRequested)  /* 0x424734: a CD track has been requested */
 BOOL bCheckIfDiscDrive(char cDriveIdx);
 void vStopCdAudio(void);
 int iOpenAndPlayCdAudio(void);

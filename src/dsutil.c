@@ -16,7 +16,7 @@
 static const char c_szWAV[] = "WAV";    /* the SDK's resource type; unused, but it is in .rdata (see docs/MATCHING.md) */
 
 /* ---- externs not (yet) in globals.h / protos.h ---- */
-extern HGLOBAL ghWavFileAlloc;              /* 0x424790: wave file read by bGetWavFileInformation_Debug */
+#define ghWavFileAlloc BSS(HGLOBAL, ghWavFileAlloc)  /* 0x424790: wave file read by bGetWavFileInformation_Debug */
 LPDIRECTSOUNDBUFFER dxReloadSoundBuffer(LPDIRECTSOUND pDirectSound, LPCSTR pWaveData);
 BOOL bGetWavFileInformation_Debug(HMODULE hModule, LPCSTR szFileName, WAVEFORMATEX **ppWaveHeader, BYTE **ppSamples, DWORD *pdwSampleBytes);
 BOOL bGetWavFileInformation(HMODULE hModule, LPCSTR szFileName, WAVEFORMATEX **ppWaveHeader, BYTE **ppSamples, DWORD *pdwSampleBytes);
@@ -81,7 +81,7 @@ BOOL bGetWavFileInformation_Debug(HMODULE hModule, LPCSTR szFileName, WAVEFORMAT
     dwBytesRead = 0;
     hFile = CreateFileA(szFileName, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     dwFileSize = GetFileSize(hFile, NULL);
-    sprintf(szMsg, "wave size\201u%d\201v", dwFileSize);  /* wave size「%d」 */
+    sprintf(szMsg, "wave size\201u%d\201v", (int)dwFileSize);  /* wave size「%d」 */
     MessageBoxA(ghWnd, szMsg, "\212m\224F", MB_TASKMODAL | MB_ICONEXCLAMATION);  /* 確認 (confirmation) */
     /* read it whole */
     ghWavFileAlloc = GlobalAlloc(GMEM_FIXED, dwFileSize);
@@ -116,11 +116,11 @@ BOOL bGetWavFileInformation(HMODULE hModule, LPCSTR szFileName, WAVEFORMATEX **p
     HGLOBAL hFileData;
     DWORD dwBytesRead;
 
-    /* matching: szFileName is read through hModule's address (the next stack slot), so that VC6
-       reloads it for CreateFileA as the original does instead of sharing one load
-       (vc6-matching-notes/matching-techniques.md, "Reading a parameter through a neighbour's address") */
-    if (*(HGLOBAL *)(&hModule + 1))
-        GlobalFree(*(HGLOBAL *)(&hModule + 1));
+    /* (the main branch reads szFileName here through hModule's address - the next stack slot - to
+       get VC6's register allocation; that is undefined behaviour for a modern compiler, so this
+       branch names the parameter) */
+    if ((HGLOBAL)szFileName)
+        GlobalFree((HGLOBAL)szFileName);
     /* open (OPEN_ALWAYS: a missing file is created empty) and read the whole file */
     dwBytesRead = 0;
     hFile = CreateFileA(szFileName, GENERIC_READ, 0, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -139,9 +139,7 @@ failed:
     GlobalFree(hFileData);
     CloseHandle(hFile);
     return FALSE;
-    /* matching: never executed; taking hModule's address in a call gives dwBytesRead its own stack
-       slot instead of reusing hModule's, as in the original */
-    ReadFile(hFile, hFileData, dwFileSize, (LPDWORD)&hModule, NULL);     /* unreachable */
+    /* (the main branch has an unreachable ReadFile here, only to steer VC6's stack slots) */
 }
 
 /*
@@ -312,7 +310,7 @@ LPDIRECTSOUNDBUFFER kgtdxReturnSoundBuffer(kgtWav *pWav)
     if (pWav == NULL)
         return NULL;
 
-    if (pBuffer = pWav->pBuffers[pWav->iCurrent]) {
+    if ((pBuffer = pWav->pBuffers[pWav->iCurrent])) {
         HRESULT hr;
         DWORD dwStatus;
 

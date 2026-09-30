@@ -13,10 +13,10 @@ typedef struct {
 } DEBUG_B;                      /* size 0x44 */
 
 /* ---- externs not in globals.h / protos.h ---- */
-extern kgt_debug_a gkgtDebugLog;            /* 0x46f6c0: on-screen debug messages (test play only) */
-extern DEBUG_B gDebugStatus;                /* 0x425a00: debug status line */
-extern int gbShowDebugStatus;               /* 0x42471c: draw gDebugStatus at the bottom of the screen; never set by the code */
-extern HDC ghFrameDc;                       /* 0x4246c0: memory DC of the frame buffer DIB */
+#define gkgtDebugLog BSS(kgt_debug_a, gkgtDebugLog)  /* 0x46f6c0: on-screen debug messages (test play only) */
+#define gDebugStatus BSS(DEBUG_B, gDebugStatus)    /* 0x425a00: debug status line */
+#define gbShowDebugStatus BSS(int, gbShowDebugStatus)  /* 0x42471c: draw gDebugStatus at the bottom of the screen; never set by the code */
+#define ghFrameDc BSS(HDC, ghFrameDc)              /* 0x4246c0: memory DC of the frame buffer DIB */
 
 void vMemzeroDebugStructs(void);
 void vTickDebugEventTimers(void);

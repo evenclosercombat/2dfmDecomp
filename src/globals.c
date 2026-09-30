@@ -4,12 +4,10 @@
  *
  * gpsScriptCommandNames is the editor's list of names for the script's conditions, values and
  * commands (unused by the game itself); the comments give the Shift-JIS text and a translation.
- * Its one empty entry was a "" literal, which VC6 places in .bss - at 0x424748, in the middle of the
- * uninitialized data defined in asm/game_bss.txt - so it is written as that bss symbol here.
+ * Its one empty entry is a "" literal (VC6 placed it in .bss, at 0x424748 - the main branch writes it
+ * as that bss symbol to reproduce the layout; include/game_bss.h keeps the slot as filler).
  */
 #include "kgt.h"
-
-extern char gszEmptyCommandName[4];         /* 0x424748: "" literal of globals.c (gpsScriptCommandNames[9]), in .bss */
 
 int giFrameMs = 40;  /* 0x41e2f0: tick period in ms; vGameLoop sets it to 10 at start-up (100 ticks per second), the 40 is never used */
 /* 0x41e2f4: caption of the warning boxes (vSpawnTaskModalWithWarning) */
@@ -25,7 +23,7 @@ char *gpsScriptCommandNames[60] = {  /* 0x41e308: the editor's script command na
     "\217\343\225\373\226\312\202\311\223\374\227\315\202\263\202\352\202\304\202\242\202\351\202\251\201H",  /* 上方面に入力されているか？ (up being input?) */
     "\211\272\225\373\226\312\202\311\223\374\227\315\202\263\202\352\202\304\202\242\202\351\202\251\201H",  /* 下方面に入力されているか？ (down being input?) */
     "\203\214\203o\201[\203j\203\205\201[\203g\203\211\203\213\202\251\201H",  /* レバーニュートラルか？ (stick in neutral?) */
-    gszEmptyCommandName,
+    "",
     "\202w\215\300\225W",  /* Ｘ座標 (X position) */
     "\202x\215\300\225W",  /* Ｙ座標 (Y position) */
     "\202l\202`\202o\202w\215\300\225W",  /* ＭＡＰＸ座標 (map X position) */

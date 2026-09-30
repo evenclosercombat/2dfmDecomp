@@ -1,7 +1,9 @@
 /*
  * kgt.h - common header for the KGT2nd_GAME.exe sources: every translation unit includes it.
  *
- * Built with Visual C++ 6.0 (cl 12.00.8168) /Ox and its own Win32/DirectX headers; see README.md.
+ * The original was built with Visual C++ 6.0 (cl 12.00.8168) /Ox and its own Win32/DirectX headers
+ * (the main branch reproduces that build); this branch is built with clang and the mingw-w64
+ * headers, see README.md.
  */
 #ifndef KGT_H
 #define KGT_H

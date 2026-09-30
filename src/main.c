@@ -552,7 +552,7 @@ int iOpenKgtSystemFile(char *szFile)
     else
         sprintf(szTitle, "%s", gkgtKgtSystem.kgtCore.szName);
     if (giAppmode)
-        sprintf(szTitle, "%s -Test Play-\0\0", szTitle);   /* the original literal has 4 extra zero bytes */
+        strcat(szTitle, " -Test Play-");   /* the original: sprintf(szTitle, "%s -Test Play-\0\0", szTitle) (literal with 4 extra zero bytes), printing onto its own argument - undefined behaviour in C, so appended here */
     SetWindowTextA(ghWnd, szTitle);
     sprintf(szMsg, "\203Q\201[\203\200\203V\203X\203e\203\200\203t\203@\203C\203\213\223\307\202\335\215\236\202\335[%s]", szFile);  /* ゲームシステムファイル読み込み[%s] */
     iSetDebugInfo(szMsg, 0xdfffff);
@@ -732,7 +732,6 @@ error:
  * external bitmap loading, DirectDraw setup, object processing, drawing, window and main loop.
  */
 
-extern char gszEmptyWindowName[4];          /* 0x42477c: main.c: CreateWindowExA window name */
 
 /* ---- declarations not (yet) in globals.h / protos.h --------------------------------------- */
 
@@ -751,73 +750,73 @@ extern char gszGameWindow[];                       /* 0x41e7bc: window class and
 extern int giPixelFormat565[6];                    /* 0x41e7e4: {16, 16, 16, 5, 4, 3}; vHandleDrawing only animates [0..2] between 8 and 0x600 with the speeds in [3..5]; nothing reads it */
 extern int giFrameMs;                              /* 0x41e2f0: tick period in ms; vGameLoop sets it to 10 at start-up (100 ticks per second) */
 extern char gszCdDrive[];                          /* 0x41e408: "X:" drive of the CD */
-extern HDC ghStripDc;                              /* 0x421a78: memory DC of the second DIB */
-extern HBITMAP ghStripBitmap;                      /* 0x421a7c: the second DIB section */
-extern HGDIOBJ ghStripOldBitmap;                   /* 0x421a80: bitmap previously selected into ghStripDc */
-extern void *gpStripBits;                          /* 0x421a84: pixels of the second DIB */
-extern BITMAPINFO gBmiStrip;                       /* 0x421650: BITMAPINFO of the second DIB (640x16, 16 bit) */
-extern BITMAPINFO gBmiFrame;                       /* 0x424298: BITMAPINFO of the frame buffer DIB (640x480, 16 bit) */
-extern HDC ghFrameDc;                              /* 0x4246c0: memory DC of the frame buffer DIB */
-extern HBITMAP ghFrameBitmap;                      /* 0x4246c4: the frame buffer DIB section */
-extern HGDIOBJ ghFrameOldBitmap;                   /* 0x4246c8: bitmap previously selected into ghFrameDc */
-extern void *gpFrameBits;                          /* 0x4246cc: pixels of the frame buffer: 640x480, 16 bit (RGB555 in a window, RGB565 full screen) */
-extern int giSkipframeCount;                       /* 0x4246f4: frames run in the last tick (1 + skipped) */
-extern int giObjectCount;                          /* 0x4246fc: objects processed in the last frame (Object: in the status line) */
-extern int giTimeAdjustmentFlag;                   /* 0x424700: 1 while the frame time of the current tick has been measured */
-extern int giScreenMode;                           /* 0x424704: display mode in use: 0 window (RGB555 DIB), 1 full screen (RGB565 surface) */
-extern int giHitJudge;                             /* 0x42470c: hit-judge display (hit boxes and player state), copy of giConfigTestplayHitjudge; the next int (0x424710) enables the line switch button */
-extern int giForceRoundEnd;                        /* 0x424718: set to end the round at once (debug key); engine.c reads it as (&gbStoryMode)[1] */
-extern int gbShowDebugStatus;                      /* 0x42471c: draw gDebugStatus at the bottom of the screen; never set by the code */
-extern MCIDEVICEID guCdAudioDeviceId;              /* 0x424720: MCI device of the CD audio */
-extern int gbCdAudioOpen;                          /* 0x424724: the CD audio device is open */
-extern int giDiscLoopFlag;                         /* 0x424728: loop the CD track (checked on MM_MCINOTIFY) */
-extern int giCdAudioError;                         /* 0x42472c: CD audio failed, do not try again */
-extern int gbMidiOpen;                             /* 0x424738: the MIDI device is open */
-extern MCIDEVICEID guMidiDeviceId;                 /* 0x42473c: MCI device of the MIDI sequencer */
-extern int giMidiLoopFlag;                         /* 0x424740: loop the MIDI file */
-extern LPDIRECTDRAWSURFACE gpDDSPrimary;           /* 0x424750: full screen: primary surface (flipping chain) */
-extern LPDIRECTDRAWSURFACE gpDDSBack;              /* 0x424754: full screen: back buffer */
-extern LPDIRECTDRAW gpDirectDraw;                  /* 0x424758: DirectDraw interface */
-extern int gbSaveWindowRect;                       /* 0x42475c: grWindowRect must be saved before going full screen */
-extern int gbDdrawInitialized;                     /* 0x424760: the DirectDraw objects exist */
-extern int giModeSwitchFrames;                     /* 0x424768: set to 3 after a display mode switch, counted down in full screen frames */
-extern int gbSwitchingDisplayMode;                 /* 0x42476c: set while the display mode is being changed */
-extern int giDisplayModeSwitches;                  /* 0x424770: number of display mode switches */
-extern int gbDisplayModeReady;                     /* 0x424774: 0 during a display mode switch, non-zero after */
-extern RECT grWindowRect;                          /* 0x424f40: window rectangle saved for going back to window mode */
-extern kgtBMPINFO gkgtBitmaps[128];                /* 0x424f60: external bitmaps: [1] text.bmp (fonts, digits), others by kgtEngineObject.iDrawFlag */
-extern DWORD gdwFrameTimeDiff;                     /* 0x425960: measured frame time in ms (FPS = 1000 / it) */
-extern int giEngineObjectIter;                     /* 0x4259a4: index of the object being processed */
-extern kgtDrawNode *gpDrawNodeNext;                /* 0x4259a8: next free gkgtDrawNodes entry */
-extern RECT grClipRect;                            /* 0x4259e0: 1x1 cursor clip rectangle used in full screen */
-extern void *gpGlobalMemoryAlloc;                  /* 0x425a44: decompression buffer */
-extern int giConfigGameWindowPointX;               /* 0x425a48: window x (ini GameWindowPoint_x) */
-extern int giConfigGameWindowPointY;               /* 0x425a4c: window y (ini GameWindowPoint_y) */
-extern int giConfigTestplayGameinfo;               /* 0x430108: test play: show game information */
-extern int giConfigTestplayExit;                   /* 0x430118: test play: quit when the window loses focus */
-extern char gszConfigReturnedFilename[MAX_PATH];   /* 0x43012c: system file name (ini File/Filename) */
-extern kgtDrawLayer gkgtDrawLayers[128];           /* 0x430240: draw lists, one per kgtEngineObject.iDepth */
-extern int giSystemFlashTimeLeft;                  /* 0x4456e4: [0] frames left, [1..4] base red, green, blue, alpha */
-extern int giReverseShakeDirection;                /* 0x4456fc: frame counter; its low bit flips the shake direction */
-extern int giStageFlashTimeLeft;                   /* 0x447d91: [0] frames left, [1..4] base red, green, blue, alpha */
-extern int giShakeXMode;                           /* 0x447da9: screen shake x (script command EB): mode; vCalculateShake takes the 5 ints */
-extern int giShakeYMode;                           /* 0x447dbd: screen shake y: mode */
-extern DWORD gdwSystemTime;                        /* 0x447dd4: timeGetTime of the next frame */
-extern int giInputBufferPos;                       /* 0x447ee0: current frame in giInputBuffer (0-1023) */
-extern int giConfigGameWindowSizeX;                /* 0x447f20: window client width (ini GameWindowSize_x) */
-extern int giConfigGameWindowSizeY;                /* 0x447f24: window client height (ini GameWindowSize_y) */
-extern int giCameraX;                              /* 0x447f2c: camera x (pixels) */
-extern int giCameraY;                              /* 0x447f30: camera y (pixels) */
-extern DDSURFACEDESC gDDSurfaceDesc;               /* 0x46ff40: surface description used to create and lock the surfaces */
-extern kgtGameState gkgtGameState;                 /* 0x470020: state of the current game */
-extern kgtEngineObject gkgtEngineObjects[1024];    /* 0x4701e0: all engine objects */
-extern kgtEngineObject *gpkgtCurrentEngineObject;  /* 0x4cfa00: object whose handler is running */
-extern kgtDrawNode gkgtDrawNodes[1024];            /* 0x4cfa20: nodes of the per-layer draw lists */
-extern char gszCurrentDirectory[256];              /* 0x4d1c60: directory of the executable (data files are opened from here) */
-extern int giConfigGameScreenMode;                 /* 0x4d1d60: display mode setting (ini GameScreenMode): 0 window, 1 full screen */
-extern char *gpsLpAppName;                         /* 0x541f7c: ini section name ("TestPlay" or "GamePlay") */
+#define ghStripDc BSS(HDC, ghStripDc)              /* 0x421a78: memory DC of the second DIB */
+#define ghStripBitmap BSS(HBITMAP, ghStripBitmap)  /* 0x421a7c: the second DIB section */
+#define ghStripOldBitmap BSS(HGDIOBJ, ghStripOldBitmap)  /* 0x421a80: bitmap previously selected into ghStripDc */
+#define gpStripBits BSS(void *, gpStripBits)       /* 0x421a84: pixels of the second DIB */
+#define gBmiStrip BSS(BITMAPINFO, gBmiStrip)       /* 0x421650: BITMAPINFO of the second DIB (640x16, 16 bit) */
+#define gBmiFrame BSS(BITMAPINFO, gBmiFrame)       /* 0x424298: BITMAPINFO of the frame buffer DIB (640x480, 16 bit) */
+#define ghFrameDc BSS(HDC, ghFrameDc)              /* 0x4246c0: memory DC of the frame buffer DIB */
+#define ghFrameBitmap BSS(HBITMAP, ghFrameBitmap)  /* 0x4246c4: the frame buffer DIB section */
+#define ghFrameOldBitmap BSS(HGDIOBJ, ghFrameOldBitmap)  /* 0x4246c8: bitmap previously selected into ghFrameDc */
+#define gpFrameBits BSS(void *, gpFrameBits)       /* 0x4246cc: pixels of the frame buffer: 640x480, 16 bit (RGB555 in a window, RGB565 full screen) */
+#define giSkipframeCount BSS(int, giSkipframeCount)  /* 0x4246f4: frames run in the last tick (1 + skipped) */
+#define giObjectCount BSS(int, giObjectCount)      /* 0x4246fc: objects processed in the last frame (Object: in the status line) */
+#define giTimeAdjustmentFlag BSS(int, giTimeAdjustmentFlag)  /* 0x424700: 1 while the frame time of the current tick has been measured */
+#define giScreenMode BSS(int, giScreenMode)        /* 0x424704: display mode in use: 0 window (RGB555 DIB), 1 full screen (RGB565 surface) */
+#define giHitJudge BSS(int, giHitJudge)            /* 0x42470c: hit-judge display (hit boxes and player state), copy of giConfigTestplayHitjudge; the next int (0x424710) enables the line switch button */
+#define giForceRoundEnd BSS(int, giForceRoundEnd)  /* 0x424718: set to end the round at once (debug key); engine.c reads it as (&gbStoryMode)[1] */
+#define gbShowDebugStatus BSS(int, gbShowDebugStatus)  /* 0x42471c: draw gDebugStatus at the bottom of the screen; never set by the code */
+#define guCdAudioDeviceId BSS(MCIDEVICEID, guCdAudioDeviceId)  /* 0x424720: MCI device of the CD audio */
+#define gbCdAudioOpen BSS(int, gbCdAudioOpen)      /* 0x424724: the CD audio device is open */
+#define giDiscLoopFlag BSS(int, giDiscLoopFlag)    /* 0x424728: loop the CD track (checked on MM_MCINOTIFY) */
+#define giCdAudioError BSS(int, giCdAudioError)    /* 0x42472c: CD audio failed, do not try again */
+#define gbMidiOpen BSS(int, gbMidiOpen)            /* 0x424738: the MIDI device is open */
+#define guMidiDeviceId BSS(MCIDEVICEID, guMidiDeviceId)  /* 0x42473c: MCI device of the MIDI sequencer */
+#define giMidiLoopFlag BSS(int, giMidiLoopFlag)    /* 0x424740: loop the MIDI file */
+#define gpDDSPrimary BSS(LPDIRECTDRAWSURFACE, gpDDSPrimary)  /* 0x424750: full screen: primary surface (flipping chain) */
+#define gpDDSBack BSS(LPDIRECTDRAWSURFACE, gpDDSBack)  /* 0x424754: full screen: back buffer */
+#define gpDirectDraw BSS(LPDIRECTDRAW, gpDirectDraw)  /* 0x424758: DirectDraw interface */
+#define gbSaveWindowRect BSS(int, gbSaveWindowRect)  /* 0x42475c: grWindowRect must be saved before going full screen */
+#define gbDdrawInitialized BSS(int, gbDdrawInitialized)  /* 0x424760: the DirectDraw objects exist */
+#define giModeSwitchFrames BSS(int, giModeSwitchFrames)  /* 0x424768: set to 3 after a display mode switch, counted down in full screen frames */
+#define gbSwitchingDisplayMode BSS(int, gbSwitchingDisplayMode)  /* 0x42476c: set while the display mode is being changed */
+#define giDisplayModeSwitches BSS(int, giDisplayModeSwitches)  /* 0x424770: number of display mode switches */
+#define gbDisplayModeReady BSS(int, gbDisplayModeReady)  /* 0x424774: 0 during a display mode switch, non-zero after */
+#define grWindowRect BSS(RECT, grWindowRect)       /* 0x424f40: window rectangle saved for going back to window mode */
+#define gkgtBitmaps BSS(kgtBMPINFO[128], gkgtBitmaps)  /* 0x424f60: external bitmaps: [1] text.bmp (fonts, digits), others by kgtEngineObject.iDrawFlag */
+#define gdwFrameTimeDiff BSS(DWORD, gdwFrameTimeDiff)  /* 0x425960: measured frame time in ms (FPS = 1000 / it) */
+#define giEngineObjectIter BSS(int, giEngineObjectIter)  /* 0x4259a4: index of the object being processed */
+#define gpDrawNodeNext BSS(kgtDrawNode *, gpDrawNodeNext)  /* 0x4259a8: next free gkgtDrawNodes entry */
+#define grClipRect BSS(RECT, grClipRect)           /* 0x4259e0: 1x1 cursor clip rectangle used in full screen */
+#define gpGlobalMemoryAlloc BSS(void *, gpGlobalMemoryAlloc)  /* 0x425a44: decompression buffer */
+#define giConfigGameWindowPointX BSS(int, giConfigGameWindowPointX)  /* 0x425a48: window x (ini GameWindowPoint_x) */
+#define giConfigGameWindowPointY BSS(int, giConfigGameWindowPointY)  /* 0x425a4c: window y (ini GameWindowPoint_y) */
+#define giConfigTestplayGameinfo BSS(int, giConfigTestplayGameinfo)  /* 0x430108: test play: show game information */
+#define giConfigTestplayExit BSS(int, giConfigTestplayExit)  /* 0x430118: test play: quit when the window loses focus */
+#define gszConfigReturnedFilename BSS(char[MAX_PATH], gszConfigReturnedFilename)  /* 0x43012c: system file name (ini File/Filename) */
+#define gkgtDrawLayers BSS(kgtDrawLayer[128], gkgtDrawLayers)  /* 0x430240: draw lists, one per kgtEngineObject.iDepth */
+#define giSystemFlashTimeLeft BSS(int, giSystemFlashTimeLeft)  /* 0x4456e4: [0] frames left, [1..4] base red, green, blue, alpha */
+#define giReverseShakeDirection BSS(int, giReverseShakeDirection)  /* 0x4456fc: frame counter; its low bit flips the shake direction */
+#define giStageFlashTimeLeft BSS(int, giStageFlashTimeLeft)  /* 0x447d91: [0] frames left, [1..4] base red, green, blue, alpha */
+#define giShakeXMode BSS(int, giShakeXMode)        /* 0x447da9: screen shake x (script command EB): mode; vCalculateShake takes the 5 ints */
+#define giShakeYMode BSS(int, giShakeYMode)        /* 0x447dbd: screen shake y: mode */
+#define gdwSystemTime BSS(DWORD, gdwSystemTime)    /* 0x447dd4: timeGetTime of the next frame */
+#define giInputBufferPos BSS(int, giInputBufferPos)  /* 0x447ee0: current frame in giInputBuffer (0-1023) */
+#define giConfigGameWindowSizeX BSS(int, giConfigGameWindowSizeX)  /* 0x447f20: window client width (ini GameWindowSize_x) */
+#define giConfigGameWindowSizeY BSS(int, giConfigGameWindowSizeY)  /* 0x447f24: window client height (ini GameWindowSize_y) */
+#define giCameraX BSS(int, giCameraX)              /* 0x447f2c: camera x (pixels) */
+#define giCameraY BSS(int, giCameraY)              /* 0x447f30: camera y (pixels) */
+#define gDDSurfaceDesc BSS(DDSURFACEDESC, gDDSurfaceDesc)  /* 0x46ff40: surface description used to create and lock the surfaces */
+#define gkgtGameState BSS(kgtGameState, gkgtGameState)  /* 0x470020: state of the current game */
+#define gkgtEngineObjects BSS(kgtEngineObject[1024], gkgtEngineObjects)  /* 0x4701e0: all engine objects */
+#define gpkgtCurrentEngineObject BSS(kgtEngineObject *, gpkgtCurrentEngineObject)  /* 0x4cfa00: object whose handler is running */
+#define gkgtDrawNodes BSS(kgtDrawNode[1024], gkgtDrawNodes)  /* 0x4cfa20: nodes of the per-layer draw lists */
+#define gszCurrentDirectory BSS(char[256], gszCurrentDirectory)  /* 0x4d1c60: directory of the executable (data files are opened from here) */
+#define giConfigGameScreenMode BSS(int, giConfigGameScreenMode)  /* 0x4d1d60: display mode setting (ini GameScreenMode): 0 window, 1 full screen */
+#define gpsLpAppName BSS(char *, gpsLpAppName)     /* 0x541f7c: ini section name ("TestPlay" or "GamePlay") */
 
-void copy_ppvBits_to_lpSurface(void *pDst, void *pSrc, int iSrcPitch, int iHeight, int iDstPitch, int iWidthBytes);
+#include "blit.h"   /* copy_ppvBits_to_lpSurface (blit.c) */
 void vEmptyEngineObjects(void);
 void vFillRect16(int iX, int iY, int iWidth, int iHeight, int iBlendMode, int iColor);
 void vDrawNumberSmall(int iValue, int iX, int iY, int iFlags, int iTintR, int iTintG, int iTintB);
@@ -840,7 +839,7 @@ void vDrawDebugInfo(void);
 int iOpenAndPlayCdAudio(void);
 int iPlayAndCloseMidFile(void);
 void vRegisterInputWindowClasses(void);
-void vHandleWmCommand(HWND hWnd, WPARAM wParam);
+void vHandleWmCommand(HWND hWnd, int iCommand);    /* (declared with WPARAM wParam in the original; dialogs.c defines it with int) */
 
 int iLoadExternalImage(kgtBMPINFO *pInfo, LPCSTR szResource, LPCSTR szFile, int iUnused);
 void vReleaseDdrawInterfaces(void);
@@ -865,7 +864,8 @@ LRESULT CALLBACK iMainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
 
 /*
  * Loads a Windows bitmap for the 16-bit drawing code into pInfo: from the file szFile if it exists,
- * else from the executable's RT_BITMAP resource szResource.  4- and 8-bit bitmaps keep their pixel
+ * else from the executable's RT_BITMAP resource szResource (on this branch: the bitmap compiled in by
+ * resources.c).  4- and 8-bit bitmaps keep their pixel
  * bytes (rows as stored, bottom-up) behind a palette converted to RGB555 (iColorsUsed + 1 WORDs);
  * 24-bit bitmaps become RGB555 pixels.  The width is rounded up to a multiple of 4 pixels (8 for 1 bit).
  * Earlier data in pInfo->pData is freed first.
@@ -874,7 +874,6 @@ LRESULT CALLBACK iMainWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam
  * Returns 0 on success; -1 when the file or resource cannot be read, for 1-bit or other unsupported
  * palette bitmaps and for an empty size (each with a message box); 1 for an unsupported bit depth that
  * got past the palette check (biClrUsed set), without freeing anything.
- * Globals: reads ghInstance.
  */
 int iLoadExternalImage(kgtBMPINFO *pInfo, LPCSTR szResource, LPCSTR szFile, int iUnused)
 {
@@ -883,7 +882,6 @@ int iLoadExternalImage(kgtBMPINFO *pInfo, LPCSTR szResource, LPCSTR szFile, int 
     BYTE *pFile;
     DWORD dwBitCount;
     HGLOBAL hMem;
-    HRSRC hRsrc;
     BITMAPINFOHEADER *pHeader;
     BYTE *pResource;
     int bFromResource;
@@ -902,7 +900,6 @@ int iLoadExternalImage(kgtBMPINFO *pInfo, LPCSTR szResource, LPCSTR szFile, int 
 
     hMem = NULL;
     bFromResource = 0;
-    hRsrc = NULL;
     pResource = NULL;
     dwBytesRead = 0;
     /* the file first: read it whole into a GlobalAlloc block */
@@ -924,10 +921,9 @@ int iLoadExternalImage(kgtBMPINFO *pInfo, LPCSTR szResource, LPCSTR szFile, int 
         pBits = pFile + ((BITMAPFILEHEADER *)pFile)->bfOffBits;
     } else {
         /* no file: the bitmap resource (a BITMAPINFOHEADER without the file header) */
-        hRsrc = FindResourceA(ghInstance, szResource, RT_BITMAP);
-        if (hRsrc == NULL)
+        pResource = (BYTE *)pLockEmbeddedResource(szResource, RT_BITMAP, NULL);  /* FindResourceA + LoadResource + LockResource in the original */
+        if (pResource == NULL)
             goto res_error;
-        pResource = LockResource(LoadResource(ghInstance, hRsrc));
         bFromResource = 1;
         pHeader = (BITMAPINFOHEADER *)pResource;
     }
@@ -989,7 +985,7 @@ have_colors:
     dwWidth = pInfo->iWidth;
     /* "the BMP size is invalid" */
     if (dwWidth * dwHeight == 0) {
-        sprintf(szMsg, "BMP\203T\203C\203Y\202\252\225s\220\263\202\305\202\267 x%d,y%d", dwWidth, dwHeight);  /* BMPサイズが不正です x%d,y%d */
+        sprintf(szMsg, "BMP\203T\203C\203Y\202\252\225s\220\263\202\305\202\267 x%d,y%d", (int)dwWidth, (int)dwHeight);  /* BMPサイズが不正です x%d,y%d */
         MessageBoxA(NULL, szMsg, "\230A\227\215", MB_TASKMODAL);  /* 連絡 */
         goto error;
     }
@@ -1034,20 +1030,20 @@ have_colors:
         break;
     default:
         /* any other depth (possible only with biClrUsed set): "unsupported bitmap file" */
-        sprintf(szMsg, "\203T\203|\201[\203g\212O\202\314\203r\203b\203g\203}\203b\203v\203t\203@\203C\203\213\202\305\202\267\201B(%dbit)", dwBitCount);  /* サポート外のビットマップファイルです。(%dbit) */
+        sprintf(szMsg, "\203T\203|\201[\203g\212O\202\314\203r\203b\203g\203}\203b\203v\203t\203@\203C\203\213\202\305\202\267\201B(%dbit)", (int)dwBitCount);  /* サポート外のビットマップファイルです。(%dbit) */
         MessageBoxA(NULL, szMsg, "error", MB_TASKMODAL);
         return 1;
     }
-    if (bFromResource) {
-        GlobalUnlock(GlobalHandle(pResource));
-        GlobalFree(GlobalHandle(pResource));
-        FreeResource(hRsrc);
-    } else {
+    /* the original also called GlobalUnlock(GlobalHandle(p)), GlobalFree(GlobalHandle(p)) and
+       FreeResource on the resource pointer (16-bit Windows habits, harmless for its image-mapped
+       resource: the calls just fail).  Here that pointer is into the executable's data, and with this
+       build the GlobalFree of it ends the process with a heap-corruption error, so only the file
+       block is freed. */
+    if (!bFromResource) {
         GlobalUnlock(hMem);
         GlobalFree(hMem);
     }
-    /* raw data.  The Global* calls on the resource pointer above are 16-bit Windows habits;
-       on Win32 FreeResource does nothing and the resource stays mapped */
+    /* raw data */
     pInfo->iCompressedSize = 0;
     return 0;
 
@@ -1055,10 +1051,7 @@ have_colors:
 error:
     if (bFromResource) {
 res_error:
-        GlobalUnlock(GlobalHandle(pResource));
-        GlobalFree(GlobalHandle(pResource));
-        FreeResource(hRsrc);
-        return -1;
+        return -1;      /* (the resource pointer is not freed, see above) */
     }
 file_error:
     GlobalUnlock(hMem);
@@ -1366,7 +1359,7 @@ void vHandleDrawing(void)
             for (i = 0; i < 2; i++) {
                 sprintf(szBuf, "%d - ", i);
                 for (j = 0; j < 4; j++)
-                    sprintf(szBuf, "%s %2d", szBuf, gkgtGameState.aiTeamRoster[i * 4 + j]);  /* prints onto its own argument (works with this CRT) */
+                    sprintf(szBuf + strlen(szBuf), " %2d", gkgtGameState.aiTeamRoster[i * 4 + j]);  /* the original: sprintf(szBuf, "%s %2d", szBuf, ...), printing onto its own argument (worked with VC6's CRT; undefined behaviour in C) */
                 vDrawTextSmall(szBuf, 500, 50 + i * 16, 0, 0, 0, 0);
             }
         }
@@ -1434,7 +1427,7 @@ void vHandleDrawing(void)
                     hFont = CreateFontA(13, 6, 0, 0, 0, 0, 0, 0, SHIFTJIS_CHARSET, 0, 0, 0, FF_MODERN, "Terminal");
                     hOldFont = SelectObject(hFrameDc, hFont);
                     SetBkMode(hFrameDc, TRANSPARENT);
-                    sprintf(szBuf, "%s", pChar->kgtCore.pSkillsAlloc + pObj->iSkillIdx);
+                    sprintf(szBuf, "%s", (char *)(pChar->kgtCore.pSkillsAlloc + pObj->iSkillIdx));   /* the skill header starts with its name */
                     SetTextColor(hFrameDc, 0);
                     TextOutA(hFrameDc, 100, iBarY + 4, szBuf, lstrlenA(szBuf));
                     TextOutA(hFrameDc, 100, iBarY + 2, szBuf, lstrlenA(szBuf));
@@ -1460,7 +1453,7 @@ void vHandleDrawing(void)
         hFont = CreateFontA(26, 12, 0, 0, 0, 0, 0, 0, SHIFTJIS_CHARSET, 0, 0, 0, FF_MODERN, "Terminal");
         hOldFont = SelectObject(hFrameDc, hFont);
         SetBkMode(hFrameDc, TRANSPARENT);
-        sprintf(szBuf, "FPS:%3d SkipFrame:%3d Object:%3d", 1000 / gdwFrameTimeDiff, giSkipframeCount - 1, giObjectCount);
+        sprintf(szBuf, "FPS:%3d SkipFrame:%3d Object:%3d", (int)(1000 / gdwFrameTimeDiff), giSkipframeCount - 1, giObjectCount);
         vDrawTextMedium(szBuf, 4, 460, 1, 0, 0, 0);
         if (gkgtGameState.kgtGameMode == GAME_MODE_STORY) {
             sprintf(szBuf, "WinPoint:%3d", gkgtLoadedCharacter[0].iWinPoints);
@@ -1583,17 +1576,17 @@ void vInitializeWindowsAndMemory(void)
     wndClass.cbClsExtra = 0;
     wndClass.cbWndExtra = 0;
     wndClass.hInstance = ghInstance;
-    wndClass.hIcon = LoadIconA(ghInstance, "exe_ico");
+    wndClass.hIcon = hLoadEmbeddedIcon("exe_ico");     /* LoadIconA(ghInstance, "exe_ico") in the original */
     wndClass.hCursor = LoadCursorA(NULL, IDC_ARROW);
     wndClass.hbrBackground = NULL;
-    wndClass.lpszMenuName = "cupid_menu";
+    wndClass.lpszMenuName = NULL;       /* "cupid_menu" in the original; here the menu is passed to CreateWindowExA */
     wndClass.lpszClassName = gszGameWindow;
     if (RegisterClassA(&wndClass)) {
-        ghWnd = CreateWindowExA(WS_EX_APPWINDOW, gszGameWindow, gszEmptyWindowName, WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_SYSMENU,
+        ghWnd = CreateWindowExA(WS_EX_APPWINDOW, gszGameWindow, "", WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME | WS_SYSMENU,
                                 giConfigGameWindowPointX, giConfigGameWindowPointY,
                                 giConfigGameWindowSizeX + GetSystemMetrics(SM_CXFRAME) * 2,
                                 GetSystemMetrics(SM_CXFRAME) * 2 + GetSystemMetrics(SM_CYMENU) + giConfigGameWindowSizeY + GetSystemMetrics(SM_CYCAPTION),
-                                NULL, NULL, ghInstance, NULL);
+                                NULL, hLoadEmbeddedMenu("cupid_menu"), ghInstance, NULL);
         ShowWindow(ghWnd, SW_SHOW);
         GetWindowRect(ghWnd, &grWindowRect);
     }

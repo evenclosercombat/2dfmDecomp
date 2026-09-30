@@ -68,4 +68,10 @@ void vFreeKgtWav(kgtWav *pWav);
 LPDIRECTSOUNDBUFFER kgtdxReturnSoundBuffer(kgtWav *pWav);
 int iStopAndResetWav(kgtWav *pWav);
 
+/* resources.c - the resources compiled in as C data (this branch has no .rsrc section) */
+const void *pLockEmbeddedResource(LPCSTR szName, LPCSTR szType, DWORD *pdwSize);
+HICON hLoadEmbeddedIcon(LPCSTR szName);
+HMENU hLoadEmbeddedMenu(LPCSTR szName);
+INT_PTR iEmbeddedDialogBoxParamA(HINSTANCE hInstance, LPCSTR szTemplate, HWND hWndParent, DLGPROC pfnDialog, LPARAM lParam);
+
 #endif

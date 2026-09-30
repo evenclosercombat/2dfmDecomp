@@ -19,8 +19,8 @@
 #include "kgt.h"
 
 /* ---- externs not in globals.h / protos.h ---- */
-extern BYTE *gpKgtCompressOut;              /* 0x424e30: output pointer of the compressor */
-extern int giKgtCompressOutSize;            /* 0x424788: bytes written so far by the compressor */
+#define gpKgtCompressOut BSS(BYTE *, gpKgtCompressOut)  /* 0x424e30: output pointer of the compressor */
+#define giKgtCompressOutSize BSS(int, giKgtCompressOutSize)  /* 0x424788: bytes written so far by the compressor */
 
 void vKgtCompressEmitOp(int iOp, int iLen);
 void vKgtCompressEmitOffset(int iOffset);

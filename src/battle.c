@@ -21,16 +21,16 @@
 #include "kgt.h"
 
 /* ---- externs not (yet) in globals.h / protos.h ------------------------------------------- */
-extern kgtEngineObject *gpkgtCurrentEngineObject;  /* 0x4cfa00: object whose handler is running */
-extern kgtEngineObject gkgtEngineObjects[1024];    /* 0x4701e0: all engine objects */
-extern kgtGameState gkgtGameState;                 /* 0x470020: state of the current game */
-extern unk_0x650_struct gAfterImageTrails[100];    /* 0x447f80: after-image trails (script command AI), kgtEngineObject.cAfterImageIdx - 1 */
-extern int giInputBufferPos;                       /* 0x447ee0: current frame in giInputBuffer (0-1023) */
-extern int giStoryModeSide;                        /* 0x424f24: copy of giStoryModePlayerIdx taken when the story character is chosen; indexes giCurrentStoryStep */
-extern int giCurrentStoryStep[3];                  /* 0x424f28: story entry per side */
-extern int giCameraX;                              /* 0x447f2c: camera x (pixels) */
-extern int giCameraY;                              /* 0x447f30: camera y (pixels) */
-extern int giHitJudge[2];                          /* 0x42470c: hit-judge display (hit boxes and player state), copy of giConfigTestplayHitjudge; the next int (0x424710) enables the line switch button */
+#define gpkgtCurrentEngineObject BSS(kgtEngineObject *, gpkgtCurrentEngineObject)  /* 0x4cfa00: object whose handler is running */
+#define gkgtEngineObjects BSS(kgtEngineObject[1024], gkgtEngineObjects)  /* 0x4701e0: all engine objects */
+#define gkgtGameState BSS(kgtGameState, gkgtGameState)  /* 0x470020: state of the current game */
+#define gAfterImageTrails BSS(unk_0x650_struct[100], gAfterImageTrails)  /* 0x447f80: after-image trails (script command AI), kgtEngineObject.cAfterImageIdx - 1 */
+#define giInputBufferPos BSS(int, giInputBufferPos)  /* 0x447ee0: current frame in giInputBuffer (0-1023) */
+#define giStoryModeSide BSS(int, giStoryModeSide)  /* 0x424f24: copy of giStoryModePlayerIdx taken when the story character is chosen; indexes giCurrentStoryStep */
+#define giCurrentStoryStep BSS(int[3], giCurrentStoryStep)  /* 0x424f28: story entry per side */
+#define giCameraX BSS(int, giCameraX)              /* 0x447f2c: camera x (pixels) */
+#define giCameraY BSS(int, giCameraY)              /* 0x447f30: camera y (pixels) */
+#define giHitJudge BSS(int[2], giHitJudge)         /* 0x42470c: hit-judge display (hit boxes and player state), copy of giConfigTestplayHitjudge; the next int (0x424710) enables the line switch button */
 
 kgtEngineObject *kgtoNewEngineObject(kgtJumptableEndpoints iJumpIdx, int iDepth, int iPosX, int iPosY);
 void vAddToSpecialGauge(int iPlayerIdx, int iAdd);
@@ -1586,7 +1586,7 @@ void vAssignSkillAndResetOtherValues(int iSkillIdx)
  * jumping (forward/back/up), guarding (guard button), walking or standing skills, and handles the
  * line-switch button.  In guard-button mode (iOptionFlags & 8) left/right are absolute and also turn
  * the player.
- * Returns 0 (a few paths return no value; the callers ignore it).
+ * Returns 0 (the callers ignore it; in the original a few paths return no value).
  * Globals: reads gpkgtCurrentEngineObject, giInputBuffer, giHitJudge[1] (line switch enabled).
  */
 int vHandleMovementSkills(void)
@@ -1610,17 +1610,17 @@ int vHandleMovementSkills(void)
                 gpkgtCurrentEngineObject->iSkillIdx = -1;
                 vAssignSkillAndResetOtherValues((WORD)pChar->shSkillIdxVictory);
                 OBJ_FLAGS(gpkgtCurrentEngineObject) = (OBJ_FLAGS(gpkgtCurrentEngineObject) & ~8) | 4;
-                return;
+                return 0;  /* was a bare return (the callers ignore the value) */
             case 2:
                 gpkgtCurrentEngineObject->iSkillIdx = -1;
                 vAssignSkillAndResetOtherValues((WORD)pChar->shSkillIdxLoss);
                 OBJ_FLAGS(gpkgtCurrentEngineObject) = (OBJ_FLAGS(gpkgtCurrentEngineObject) & ~8) | 4;
-                return;
+                return 0;  /* was a bare return (the callers ignore the value) */
             case 3:
                 gpkgtCurrentEngineObject->iSkillIdx = -1;
                 vAssignSkillAndResetOtherValues((WORD)pChar->shSkillIdxDraw);
                 OBJ_FLAGS(gpkgtCurrentEngineObject) = (OBJ_FLAGS(gpkgtCurrentEngineObject) & ~8) | 4;
-                return;
+                return 0;  /* was a bare return (the callers ignore the value) */
             }
         }
         /* turn towards the enemy (automatic turning only outside guard-button mode) */
@@ -1741,21 +1741,21 @@ int vHandleMovementSkills(void)
  * declarations it needs (the duplicates are harmless).
  */
 
-extern char gAfterImageTrailsBase[];        /* 0x447930: one element before gAfterImageTrails (inside gkgtLoadedStage): the trail code indexes from here */
+#define gAfterImageTrailsBase BSS(char[], gAfterImageTrailsBase)  /* 0x447930: one element before gAfterImageTrails (inside gkgtLoadedStage): the trail code indexes from here */
 
 /* ---- declarations not (yet) in globals.h / protos.h (shared with battle.c's first half) ---- */
 extern int giObjectLayers[2];                      /* 0x41f130: player depth by line (kgtEngineObject.iLine & 1) */
 extern int giCpuDirTableA[16];                     /* 0x41f138: CPU command direction -> input bits */
 extern int giCpuDirTableB[16];                     /* 0x41f178: the same, mirrored */
-extern kgtEngineObject *gpkgtCurrentEngineObject;  /* 0x4cfa00: object whose handler is running */
-extern kgtEngineObject gkgtEngineObjects[1024];    /* 0x4701e0: all engine objects */
-extern kgtGameState gkgtGameState;                 /* 0x470020: state of the current game */
-extern unk_0x650_struct gAfterImageTrails[100];    /* 0x447f80: after-image trails (script command AI), kgtEngineObject.cAfterImageIdx - 1 */
-extern int giInputBufferPos;                       /* 0x447ee0: current frame in giInputBuffer (0-1023) */
-extern int giStoryModeSide;                        /* 0x424f24: copy of giStoryModePlayerIdx taken when the story character is chosen; indexes giCurrentStoryStep */
-extern int giCurrentStoryStep[3];                  /* 0x424f28: story entry per side */
-extern int giCameraX;                              /* 0x447f2c: camera x (pixels) */
-extern int giCameraY;                              /* 0x447f30: camera y (pixels) */
+#define gpkgtCurrentEngineObject BSS(kgtEngineObject *, gpkgtCurrentEngineObject)  /* 0x4cfa00: object whose handler is running */
+#define gkgtEngineObjects BSS(kgtEngineObject[1024], gkgtEngineObjects)  /* 0x4701e0: all engine objects */
+#define gkgtGameState BSS(kgtGameState, gkgtGameState)  /* 0x470020: state of the current game */
+#define gAfterImageTrails BSS(unk_0x650_struct[100], gAfterImageTrails)  /* 0x447f80: after-image trails (script command AI), kgtEngineObject.cAfterImageIdx - 1 */
+#define giInputBufferPos BSS(int, giInputBufferPos)  /* 0x447ee0: current frame in giInputBuffer (0-1023) */
+#define giStoryModeSide BSS(int, giStoryModeSide)  /* 0x424f24: copy of giStoryModePlayerIdx taken when the story character is chosen; indexes giCurrentStoryStep */
+#define giCurrentStoryStep BSS(int[3], giCurrentStoryStep)  /* 0x424f28: story entry per side */
+#define giCameraX BSS(int, giCameraX)              /* 0x447f2c: camera x (pixels) */
+#define giCameraY BSS(int, giCameraY)              /* 0x447f30: camera y (pixels) */
 
 kgtEngineObject *kgtoNewEngineObject(kgtJumptableEndpoints iJumpIdx, int iDepth, int iPosX, int iPosY);
 void vAddToSpecialGauge(int iPlayerIdx, int iAdd);
@@ -2185,34 +2185,34 @@ typedef struct { BYTE cBytes[6]; } kgtCancelBlock;
 typedef struct { int iType; int iRed, iGreen, iBlue, iAlpha; int iTimeLeft; int iBaseRed, iBaseGreen, iBaseBlue, iBaseAlpha; int iDuration; } kgtFlash;
 #pragma pack(pop)
 
-extern short gshSystemVariables[16];        /* 0x4456b0: system variables (script command V), kgtSystem + 0x12470 */
-extern int giSystemFlashType;               /* 0x4456d0: colour effect of system objects (layout of kgt_character_struct.flash): 1 smooth, 2 blinking, 3 random */
-extern int giSystemFlashRed;                /* 0x4456d4: red */
-extern int giSystemFlashGreen;              /* 0x4456d8: green */
-extern int giSystemFlashBlue;               /* 0x4456dc: blue */
-extern int giSystemFlashAlpha;              /* 0x4456e0: alpha */
-extern int giSystemFlashTimeLeft[5];        /* 0x4456e4: [0] frames left, [1..4] base red, green, blue, alpha */
-extern int giSystemFlashDuration;           /* 0x4456f8: total frames */
-extern int giGravityScalar;                 /* 0x445700: multiplier of script gravity values (game speed) */
-extern int giGamespeedFrames;               /* 0x445704: game speed setting in effect */
-extern int giStageFlashType;                /* 0x447d7d: colour effect of stage objects (layout of kgt_character_struct.flash), kgt_stage + 0x263d */
-extern int giStageFlashRed;                 /* 0x447d81: red */
-extern int giStageFlashGreen;               /* 0x447d85: green */
-extern int giStageFlashBlue;                /* 0x447d89: blue */
-extern int giStageFlashAlpha;               /* 0x447d8d: alpha */
-extern int giStageFlashTimeLeft[5];         /* 0x447d91: [0] frames left, [1..4] base red, green, blue, alpha */
-extern int giStageFlashDuration;            /* 0x447da5: total frames */
-extern int giShakeXMode;                    /* 0x447da9: screen shake x (script command EB): mode; vCalculateShake takes the 5 ints */
-extern int giShakeXOffset;                  /* 0x447dad: current x offset (pixels) */
-extern int giShakeXAmplitude;               /* 0x447db1: amplitude */
-extern int giShakeXTimeLeft;                /* 0x447db5: frames left */
-extern int giShakeXDuration;                /* 0x447db9: total frames */
-extern int giShakeYMode;                    /* 0x447dbd: screen shake y: mode */
-extern int giShakeYOffset;                  /* 0x447dc1: current y offset (pixels) */
-extern int giShakeYAmplitude;               /* 0x447dc5: amplitude */
-extern int giShakeYTimeLeft;                /* 0x447dc9: frames left */
-extern int giShakeYDuration;                /* 0x447dcd: total frames */
-extern int giPlayerMomentumScalar;          /* 0x541f78: multiplier of script momentum values (game speed) */
+#define gshSystemVariables BSS(short[16], gshSystemVariables)  /* 0x4456b0: system variables (script command V), kgtSystem + 0x12470 */
+#define giSystemFlashType BSS(int, giSystemFlashType)  /* 0x4456d0: colour effect of system objects (layout of kgt_character_struct.flash): 1 smooth, 2 blinking, 3 random */
+#define giSystemFlashRed BSS(int, giSystemFlashRed)  /* 0x4456d4: red */
+#define giSystemFlashGreen BSS(int, giSystemFlashGreen)  /* 0x4456d8: green */
+#define giSystemFlashBlue BSS(int, giSystemFlashBlue)  /* 0x4456dc: blue */
+#define giSystemFlashAlpha BSS(int, giSystemFlashAlpha)  /* 0x4456e0: alpha */
+#define giSystemFlashTimeLeft BSS(int[5], giSystemFlashTimeLeft)  /* 0x4456e4: [0] frames left, [1..4] base red, green, blue, alpha */
+#define giSystemFlashDuration BSS(int, giSystemFlashDuration)  /* 0x4456f8: total frames */
+#define giGravityScalar BSS(int, giGravityScalar)  /* 0x445700: multiplier of script gravity values (game speed) */
+#define giGamespeedFrames BSS(int, giGamespeedFrames)  /* 0x445704: game speed setting in effect */
+#define giStageFlashType BSS(int, giStageFlashType)  /* 0x447d7d: colour effect of stage objects (layout of kgt_character_struct.flash), kgt_stage + 0x263d */
+#define giStageFlashRed BSS(int, giStageFlashRed)  /* 0x447d81: red */
+#define giStageFlashGreen BSS(int, giStageFlashGreen)  /* 0x447d85: green */
+#define giStageFlashBlue BSS(int, giStageFlashBlue)  /* 0x447d89: blue */
+#define giStageFlashAlpha BSS(int, giStageFlashAlpha)  /* 0x447d8d: alpha */
+#define giStageFlashTimeLeft BSS(int[5], giStageFlashTimeLeft)  /* 0x447d91: [0] frames left, [1..4] base red, green, blue, alpha */
+#define giStageFlashDuration BSS(int, giStageFlashDuration)  /* 0x447da5: total frames */
+#define giShakeXMode BSS(int, giShakeXMode)        /* 0x447da9: screen shake x (script command EB): mode; vCalculateShake takes the 5 ints */
+#define giShakeXOffset BSS(int, giShakeXOffset)    /* 0x447dad: current x offset (pixels) */
+#define giShakeXAmplitude BSS(int, giShakeXAmplitude)  /* 0x447db1: amplitude */
+#define giShakeXTimeLeft BSS(int, giShakeXTimeLeft)  /* 0x447db5: frames left */
+#define giShakeXDuration BSS(int, giShakeXDuration)  /* 0x447db9: total frames */
+#define giShakeYMode BSS(int, giShakeYMode)        /* 0x447dbd: screen shake y: mode */
+#define giShakeYOffset BSS(int, giShakeYOffset)    /* 0x447dc1: current y offset (pixels) */
+#define giShakeYAmplitude BSS(int, giShakeYAmplitude)  /* 0x447dc5: amplitude */
+#define giShakeYTimeLeft BSS(int, giShakeYTimeLeft)  /* 0x447dc9: frames left */
+#define giShakeYDuration BSS(int, giShakeYDuration)  /* 0x447dcd: total frames */
+#define giPlayerMomentumScalar BSS(int, giPlayerMomentumScalar)  /* 0x541f78: multiplier of script momentum values (game speed) */
 
 int iSubtractTwoFiftySixIfAboveOneTwentySeven(char cValue);
 int process_COM_skillblock(kgtSkill *pSkill);
@@ -2265,7 +2265,12 @@ void vjmpReadScript(void)
     int iInput, bHit;
     BYTE bNot;
     WORD wSkill;  /* skill index; also the image step's wait */
-    short shValue, *pVar;
+    /* (initialized here, unlike the original: a V step with scope 3 for its variable, or with a scope 3
+       source index above 7, sets neither; the original then used whatever its register or stack slot
+       held, an uninitialized read that a modern optimizer may turn into anything.  Here such a step
+       reuses the previous V step's value, or a dummy variable) */
+    short shNoVar = 0;
+    short shValue = 0, *pVar = &shNoVar;
     int iOppLife;
     char szMsg[256];
 

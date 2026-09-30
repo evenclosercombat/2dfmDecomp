@@ -285,7 +285,7 @@ int iEnumDirectPlayServiceProviders(void)
     ZeroMemory(gServiceProviderGuids, sizeof(gServiceProviderGuids));
     ZeroMemory(gszServiceProviderNames, sizeof(gszServiceProviderNames));
     giNumServiceProviders = 0;
-    DirectPlayEnumerate(bDirectPlayEnumerateCallback, NULL);
+    DirectPlayEnumerateA(bDirectPlayEnumerateCallback, NULL);   /* DirectPlayEnumerate in the DirectX SDK's dplay.h is this macro; mingw-w64's has only the A/W names */
     return 1;
 }
 
@@ -374,8 +374,8 @@ void vOnlineAnnouncePlayerAndSetTitle(char *szSessionName)
     vDpSendToAllGuaranteed(&joinMsg, sizeof(joinMsg));
     sprintf(szTitle, "kgt2k  Game:%s  Player:%s  IP:%02d.%02d.%02d.%02d  %s", szSessionName,
             gkgtLoadedCharacter[giLocalOnlineSlot].kgtCore.szName,
-            ntohl(guLocalIpAddr) >> 24, (ntohl(guLocalIpAddr) >> 16) & 0xff,
-            (ntohl(guLocalIpAddr) >> 8) & 0xff, ntohl(guLocalIpAddr) & 0xff, gszLocalHostName);
+            (int)(ntohl(guLocalIpAddr) >> 24), (int)((ntohl(guLocalIpAddr) >> 16) & 0xff),
+            (int)((ntohl(guLocalIpAddr) >> 8) & 0xff), (int)(ntohl(guLocalIpAddr) & 0xff), gszLocalHostName);
     SetWindowTextA(ghWnd, szTitle);
 }
 
@@ -601,11 +601,12 @@ BOOL CALLBACK iOnlineDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 /*
  * Runs the netplay dialog (menu command 0xa29, see vHandleWmCommand; not in the shipped menu).
- * hInstance: module with the dialog template; hWnd: the owner window.
+ * hInstance: the module (the template, dialog 101, is compiled in by resources.c on this branch);
+ * hWnd: the owner window.
  */
 void vSpawnOnlineDialog(HINSTANCE hInstance, HWND hWnd)
 {
-    DialogBoxParamA(hInstance, MAKEINTRESOURCE(101), hWnd, iOnlineDlgProc, 0);
+    iEmbeddedDialogBoxParamA(hInstance, MAKEINTRESOURCE(101), hWnd, iOnlineDlgProc, 0);
 }
 
 /*

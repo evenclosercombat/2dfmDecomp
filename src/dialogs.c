@@ -3,8 +3,9 @@
  * keyboard and joystick setup dialogs with their key/button capture windows, the about box and the
  * main window's menu commands (the last object of the game, 0x4160f0-0x417850).
  *
- * The dialog templates are in rsrc/kgt2nd.rc; the numbers of their controls are used directly in
- * the code (commented where they appear).  The setup dialogs edit a copy of the layout
+ * The dialog templates are in rsrc/kgt2nd.rc (compiled in by src/resources.c); the numbers of
+ * their controls are used directly in the code (commented where they appear).  The setup dialogs
+ * edit a copy of the layout
  * (gKeyConfigEdit / gJoyConfigEdit): a click on an entry opens a small popup window that waits for
  * a key or joystick button, stores it into the copy and sends WM_COMMAND 10 to the dialog, which
  * then refreshes its button captions; OK copies the layout back.
@@ -17,43 +18,43 @@ typedef struct { BYTE cKeys[2][17]; } KEYCONFIG;        /* virtual-key codes: up
 typedef struct { BYTE cButtons[2][7]; } JOYCONFIG;      /* joystick button numbers (from 0) of A-F, pause */
 
 /* ---- externs not (yet) in globals.h / protos.h ---- */
-extern int giConfigTestplayPlayer0Cpu;      /* 0x4300e4: test play: player 0 CPU mode */
-extern int giConfigTestplayPlayer1Cpu;      /* 0x4300f4: test play: player 1 CPU mode */
-extern int giConfigTestplayHitjudge;        /* 0x430100: test play: show hit boxes */
-extern int giConfigTestplayGamespeed;       /* 0x430104: test play: game speed */
-extern int giConfigTestplayGameinfo;        /* 0x430108: test play: show game information */
-extern int giConfigTestplayStageNb;         /* 0x43010c: test play: stage */
-extern int giConfigTestplayJoystick;        /* 0x430110: use the joysticks */
-extern int giConfigTestplayTime;            /* 0x430114: round time setting */
-extern int giConfigNumberOfRounds;          /* 0x430124: rounds of a single game */
-extern int giConfigNumberOfRoundsTeamVs;    /* 0x430128: rounds of a team game */
-extern HWND ghTrackbarTime;                 /* 0x424798: settings dialog: round time trackbar */
-extern LRESULT giTrackbarTimePos;           /* 0x4247b0: position of ghTrackbarTime */
-extern HWND ghTrackbarRounds;               /* 0x4247b4: settings dialog: rounds trackbar */
-extern HWND ghTrackbarRoundsTeamVs;         /* 0x4247b8: settings dialog: team rounds trackbar */
-extern LRESULT giTrackbarSpeedPos;          /* 0x4247bc: position of ghTrackbarSpeed */
-extern LRESULT giTrackbarRoundsPos;         /* 0x4247c0: position of ghTrackbarRounds */
-extern LRESULT giTrackbarRoundsTeamVsPos;   /* 0x4247f8: position of ghTrackbarRoundsTeamVs */
-extern HWND ghTrackbarSpeed;                /* 0x4247fc: settings dialog: game speed trackbar */
-extern KEYCONFIG gKeyConfigEdit;            /* 0x4247c4: key layout being edited in the key dialog */
-extern JOYCONFIG gJoyConfigEdit;            /* 0x4247e8: joystick buttons being edited */
-/* 0x424800  timer polling the joystick; the only game .bss defined in C (see asm/game_bss.txt and
-   docs/MATCHING.md: it puts the end of the game's .bss where LIBC's starts in the original) */
+#define giConfigTestplayPlayer0Cpu BSS(int, giConfigTestplayPlayer0Cpu)  /* 0x4300e4: test play: player 0 CPU mode */
+#define giConfigTestplayPlayer1Cpu BSS(int, giConfigTestplayPlayer1Cpu)  /* 0x4300f4: test play: player 1 CPU mode */
+#define giConfigTestplayHitjudge BSS(int, giConfigTestplayHitjudge)  /* 0x430100: test play: show hit boxes */
+#define giConfigTestplayGamespeed BSS(int, giConfigTestplayGamespeed)  /* 0x430104: test play: game speed */
+#define giConfigTestplayGameinfo BSS(int, giConfigTestplayGameinfo)  /* 0x430108: test play: show game information */
+#define giConfigTestplayStageNb BSS(int, giConfigTestplayStageNb)  /* 0x43010c: test play: stage */
+#define giConfigTestplayJoystick BSS(int, giConfigTestplayJoystick)  /* 0x430110: use the joysticks */
+#define giConfigTestplayTime BSS(int, giConfigTestplayTime)  /* 0x430114: round time setting */
+#define giConfigNumberOfRounds BSS(int, giConfigNumberOfRounds)  /* 0x430124: rounds of a single game */
+#define giConfigNumberOfRoundsTeamVs BSS(int, giConfigNumberOfRoundsTeamVs)  /* 0x430128: rounds of a team game */
+#define ghTrackbarTime BSS(HWND, ghTrackbarTime)   /* 0x424798: settings dialog: round time trackbar */
+#define giTrackbarTimePos BSS(LRESULT, giTrackbarTimePos)  /* 0x4247b0: position of ghTrackbarTime */
+#define ghTrackbarRounds BSS(HWND, ghTrackbarRounds)  /* 0x4247b4: settings dialog: rounds trackbar */
+#define ghTrackbarRoundsTeamVs BSS(HWND, ghTrackbarRoundsTeamVs)  /* 0x4247b8: settings dialog: team rounds trackbar */
+#define giTrackbarSpeedPos BSS(LRESULT, giTrackbarSpeedPos)  /* 0x4247bc: position of ghTrackbarSpeed */
+#define giTrackbarRoundsPos BSS(LRESULT, giTrackbarRoundsPos)  /* 0x4247c0: position of ghTrackbarRounds */
+#define giTrackbarRoundsTeamVsPos BSS(LRESULT, giTrackbarRoundsTeamVsPos)  /* 0x4247f8: position of ghTrackbarRoundsTeamVs */
+#define ghTrackbarSpeed BSS(HWND, ghTrackbarSpeed)  /* 0x4247fc: settings dialog: game speed trackbar */
+#define gKeyConfigEdit BSS(KEYCONFIG, gKeyConfigEdit)  /* 0x4247c4: key layout being edited in the key dialog */
+#define gJoyConfigEdit BSS(JOYCONFIG, gJoyConfigEdit)  /* 0x4247e8: joystick buttons being edited */
+/* 0x424800  timer polling the joystick (in the original the last dword of the game's plain .bss,
+   whose slot include/game_bss.h keeps as filler; a static here, nothing relies on its place) */
 static struct { WORD wId; WORD wUnused; } giJoystickInputTimer;
-extern BYTE *gpJoyInputButton;               /* 0x4249b0: gJoyConfigEdit entry waiting for a button */
-extern HWND ghJoyWindow;                     /* 0x4249b4: joystick input dialog */
-extern BYTE *gpKeyInputTarget;               /* 0x4249b8: gKeyConfigEdit entry waiting for a key */
-extern int giJoyInputPad;                    /* 0x4249bc: joystick (0/1) being configured */
-extern HWND ghKeyInputWindow;                /* 0x4249c0: key input dialog */
-extern KEYCONFIG gcKeyboardControlsSets;     /* 0x425980: key layout per player: up, left, down, right, A-F, pause (ini "PlayerN KEY ...") */
-extern JOYCONFIG gcJoystickButtons;          /* 0x445710: joystick button per input A-F, pause, per player (ini "PlayerN JOY ...") */
+#define gpJoyInputButton BSS(BYTE *, gpJoyInputButton)  /* 0x4249b0: gJoyConfigEdit entry waiting for a button */
+#define ghJoyWindow BSS(HWND, ghJoyWindow)         /* 0x4249b4: joystick input dialog */
+#define gpKeyInputTarget BSS(BYTE *, gpKeyInputTarget)  /* 0x4249b8: gKeyConfigEdit entry waiting for a key */
+#define giJoyInputPad BSS(int, giJoyInputPad)      /* 0x4249bc: joystick (0/1) being configured */
+#define ghKeyInputWindow BSS(HWND, ghKeyInputWindow)  /* 0x4249c0: key input dialog */
+#define gcKeyboardControlsSets BSS(KEYCONFIG, gcKeyboardControlsSets)  /* 0x425980: key layout per player: up, left, down, right, A-F, pause (ini "PlayerN KEY ...") */
+#define gcJoystickButtons BSS(JOYCONFIG, gcJoystickButtons)  /* 0x445710: joystick button per input A-F, pause, per player (ini "PlayerN JOY ...") */
 extern KEYCONFIG gcDefaultKeyboardControls;  /* 0x41f314: default key layout of both players */
 extern JOYCONFIG gcDefaultJoystickButtons;   /* 0x41f354: default joystick buttons of both players */
-extern int giScreenMode;                     /* 0x424704: display mode in use: 0 window (RGB555 DIB), 1 full screen (RGB565 surface) */
-extern DWORD gdwSystemTime;                  /* 0x447dd4: timeGetTime of the next frame */
-extern int giConfigGameWindowSizeX;          /* 0x447f20: window client width (ini GameWindowSize_x) */
-extern int giConfigGameWindowSizeY;          /* 0x447f24: window client height (ini GameWindowSize_y) */
-extern RECT grDialogRect;                    /* 0x4247a0: window rectangle of the settings dialog */
+#define giScreenMode BSS(int, giScreenMode)        /* 0x424704: display mode in use: 0 window (RGB555 DIB), 1 full screen (RGB565 surface) */
+#define gdwSystemTime BSS(DWORD, gdwSystemTime)    /* 0x447dd4: timeGetTime of the next frame */
+#define giConfigGameWindowSizeX BSS(int, giConfigGameWindowSizeX)  /* 0x447f20: window client width (ini GameWindowSize_x) */
+#define giConfigGameWindowSizeY BSS(int, giConfigGameWindowSizeY)  /* 0x447f24: window client height (ini GameWindowSize_y) */
+#define grDialogRect BSS(RECT, grDialogRect)       /* 0x4247a0: window rectangle of the settings dialog */
 void vSetupDdrawPrimarySurface(void);
 void vCheckWindowBounds(HWND hWnd);
 BOOL CALLBACK iTestplayOptionsDlgProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
@@ -561,7 +562,10 @@ LRESULT CALLBACK iJoyInputWndProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lP
         SetBkMode(hDc, TRANSPARENT);
         SetTextColor(hDc, GetSysColor(COLOR_HIGHLIGHT));
         /* the format has no %d: the joystick number argument is unused */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-extra-args"   /* the argument is unused, as in the original */
         sprintf(szText, "Press a Button on your JoyStick                 ", giJoyInputPad + 1);
+#pragma GCC diagnostic pop
         TextOutA(hDc, 8, 8, szText, lstrlenA(szText));
         SelectObject(hDc, hOldFont);
         DeleteObject(hFont);
@@ -778,6 +782,9 @@ BOOL CALLBACK iLpDialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
         EndDialog(hDlg, 0);
         return TRUE;
     case WM_INITDIALOG:
+        /* not in the original: the icon control (id 0, text "exe_ico") cannot load the icon by name
+           without a .rsrc section, so it is given the embedded one */
+        SendDlgItemMessageA(hDlg, 0, STM_SETICON, (WPARAM)hLoadEmbeddedIcon("exe_ico"), 0);
         return TRUE;
     case WM_COMMAND:
         switch (wParam) {
@@ -791,13 +798,14 @@ BOOL CALLBACK iLpDialogFunc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 }
 
 /*
- * Shows the about box (menu Help/About).
+ * Shows the about box (menu Help/About).  (On this branch the dialogs are shown with
+ * iEmbeddedDialogBoxParamA, DialogBoxParamA with the templates compiled in by resources.c.)
  * hWnd: the owner window.
  * Globals: reads ghInstance.
  */
 void vSpawnAboutDlgBox(HWND hWnd)
 {
-    DialogBoxParamA(ghInstance, "about_dlg", hWnd, iLpDialogFunc, 0);
+    iEmbeddedDialogBoxParamA(ghInstance, "about_dlg", hWnd, iLpDialogFunc, 0);
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -836,13 +844,13 @@ void vHandleWmCommand(HWND hWnd, int iCommand)
         vSpawnAboutDlgBox(hWnd);
         break;
     case 0x91f:     /* 2335 Option/"Game": game settings */
-        DialogBoxParamA(ghInstance, "DIALOG_GAMESPEEDSETUP", hWnd, iTestplayOptionsDlgProc, 0);
+        iEmbeddedDialogBoxParamA(ghInstance, "DIALOG_GAMESPEEDSETUP", hWnd, iTestplayOptionsDlgProc, 0);
         break;
     case 0x9c5:     /* 2501 Option/"KeyBoard" */
-        DialogBoxParamA(ghInstance, "DIALOG_Setup_KeyBoard", hWnd, iSetupKeyboardDlgProc, 0);
+        iEmbeddedDialogBoxParamA(ghInstance, "DIALOG_Setup_KeyBoard", hWnd, iSetupKeyboardDlgProc, 0);
         break;
     case 0x9c6:     /* 2502 Option/"JoyStick" */
-        DialogBoxParamA(ghInstance, "DIALOG_Setup_JoyStick", hWnd, iSetupJoystickDlgProc, 0);
+        iEmbeddedDialogBoxParamA(ghInstance, "DIALOG_Setup_JoyStick", hWnd, iSetupJoystickDlgProc, 0);
         break;
     case 0xa29:     /* 2601: netplay dialog (online.c) */
         vSpawnOnlineDialog(ghInstance, ghWnd);

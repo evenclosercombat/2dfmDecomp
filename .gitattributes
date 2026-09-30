@@ -1,3 +1,2 @@
-# Store every file byte for byte: sources contain Shift-JIS bytes and CRLF line endings,
-# and the build is compared byte-for-byte with the original.
+# Store every file byte for byte: sources contain Shift-JIS bytes and CRLF line endings.
 * -text

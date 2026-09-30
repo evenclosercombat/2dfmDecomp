@@ -24,28 +24,28 @@ typedef struct {
 } KEY_LAYOUT;                   /* size 17 */
 
 /* ---- externs not in globals.h / protos.h ---- */
-extern kgtGameState gkgtGameState;            /* 0x470020: state of the current game */
-extern JOYCAPSA gJoyCaps1;                    /* 0x4249e0: capabilities of joystick 1 */
-extern JOYCAPSA gJoyCaps2;                    /* 0x424b80: capabilities of joystick 2 */
-extern BYTE gcKeyState[256];                  /* 0x424d20: GetKeyboardState buffer */
-extern DWORD gdwJoystickX;                    /* 0x424e20: joystick 1 x centre */
-extern DWORD gdwJoystickY;                    /* 0x424e24: joystick 1 y centre */
-extern DWORD gdwJoystickTwoX;                 /* 0x424e28: joystick 2 x centre */
-extern DWORD gdwJoystickTwoY;                 /* 0x424e2c: joystick 2 y centre */
-extern int giStoryModePlayerIdx;              /* 0x424f20: player (0/1) who started story mode */
-extern KEY_LAYOUT gcKeyboardControlsSets[2];  /* 0x425980: key layout per player: up, left, down, right, A-F, pause (ini "PlayerN KEY ...") */
-extern int giUserKeydowns[8];                 /* 0x4259c0: inputs held this frame per player */
-extern int giAnyInputXor;                     /* 0x4280d8: giLastInputXor of all players ORed */
-extern BYTE gcJoystickButtons[2][7];          /* 0x445710: joystick button per input A-F, pause, per player (ini "PlayerN JOY ...") */
-extern int giInputBufferPos;                  /* 0x447ee0: current frame in giInputBuffer (0-1023) */
-extern int giLastInput[8];                    /* 0x447f00: inputs held in the previous frame */
-extern int giLastInputCleaned[8];             /* 0x447f40: newly pressed or auto-repeated inputs (menus) */
-extern int giLastInputXor[8];                 /* 0x447f60: inputs newly pressed this frame */
-extern int giAnyInput;                        /* 0x4cfa04: giUserKeydowns of all players ORed */
-extern int giAnyInputCleaned;                 /* 0x4d1c20: giLastInputCleaned of all players ORed */
-extern int giInputCountdowns[8];              /* 0x4d1c40: auto-repeat countdown per player */
-extern int giRepeatInput[8];                  /* 0x541f80: input compared for auto-repeat */
-extern int giConfigTestplayJoystick;          /* 0x430110: use the joysticks */
+#define gkgtGameState BSS(kgtGameState, gkgtGameState)  /* 0x470020: state of the current game */
+#define gJoyCaps1 BSS(JOYCAPSA, gJoyCaps1)         /* 0x4249e0: capabilities of joystick 1 */
+#define gJoyCaps2 BSS(JOYCAPSA, gJoyCaps2)         /* 0x424b80: capabilities of joystick 2 */
+#define gcKeyState BSS(BYTE[256], gcKeyState)      /* 0x424d20: GetKeyboardState buffer */
+#define gdwJoystickX BSS(DWORD, gdwJoystickX)      /* 0x424e20: joystick 1 x centre */
+#define gdwJoystickY BSS(DWORD, gdwJoystickY)      /* 0x424e24: joystick 1 y centre */
+#define gdwJoystickTwoX BSS(DWORD, gdwJoystickTwoX)  /* 0x424e28: joystick 2 x centre */
+#define gdwJoystickTwoY BSS(DWORD, gdwJoystickTwoY)  /* 0x424e2c: joystick 2 y centre */
+#define giStoryModePlayerIdx BSS(int, giStoryModePlayerIdx)  /* 0x424f20: player (0/1) who started story mode */
+#define gcKeyboardControlsSets BSS(KEY_LAYOUT[2], gcKeyboardControlsSets)  /* 0x425980: key layout per player: up, left, down, right, A-F, pause (ini "PlayerN KEY ...") */
+#define giUserKeydowns BSS(int[8], giUserKeydowns)  /* 0x4259c0: inputs held this frame per player */
+#define giAnyInputXor BSS(int, giAnyInputXor)      /* 0x4280d8: giLastInputXor of all players ORed */
+#define gcJoystickButtons BSS(BYTE[2][7], gcJoystickButtons)  /* 0x445710: joystick button per input A-F, pause, per player (ini "PlayerN JOY ...") */
+#define giInputBufferPos BSS(int, giInputBufferPos)  /* 0x447ee0: current frame in giInputBuffer (0-1023) */
+#define giLastInput BSS(int[8], giLastInput)       /* 0x447f00: inputs held in the previous frame */
+#define giLastInputCleaned BSS(int[8], giLastInputCleaned)  /* 0x447f40: newly pressed or auto-repeated inputs (menus) */
+#define giLastInputXor BSS(int[8], giLastInputXor)  /* 0x447f60: inputs newly pressed this frame */
+#define giAnyInput BSS(int, giAnyInput)            /* 0x4cfa04: giUserKeydowns of all players ORed */
+#define giAnyInputCleaned BSS(int, giAnyInputCleaned)  /* 0x4d1c20: giLastInputCleaned of all players ORed */
+#define giInputCountdowns BSS(int[8], giInputCountdowns)  /* 0x4d1c40: auto-repeat countdown per player */
+#define giRepeatInput BSS(int[8], giRepeatInput)   /* 0x541f80: input compared for auto-repeat */
+#define giConfigTestplayJoystick BSS(int, giConfigTestplayJoystick)  /* 0x430110: use the joysticks */
 extern int giKeyRepeatDelay;                  /* 0x41e3fc: auto-repeat delay in frames */
 extern int giKeyRepeatRate;                   /* 0x41e400: auto-repeat interval in frames */
 
@@ -269,20 +269,23 @@ int iTranslateKeyPress(int iController, int iPlayer)
         iInput |= IN_UP;
     if (iStickY > 3)
         iInput |= IN_DOWN;
-    /* buttons: gcJoystickButtons holds the button number (bit of dwButtons) of A-F and pause */
-    if (joyInfo.dwButtons & (1 << gcJoystickButtons[iController][0]))
+    /* buttons: gcJoystickButtons holds the button number (bit of dwButtons) of A-F and pause.
+       (The count is taken modulo 32 as the x86 shift of the original does; a button number of 32 or
+       more from the ini would otherwise be an undefined shift.) */
+#define JOY_BUTTON_BIT(n) (1u << ((n) & 31))
+    if (joyInfo.dwButtons & JOY_BUTTON_BIT(gcJoystickButtons[iController][0]))
         iInput |= IN_A;
-    if (joyInfo.dwButtons & (1 << gcJoystickButtons[iController][1]))
+    if (joyInfo.dwButtons & JOY_BUTTON_BIT(gcJoystickButtons[iController][1]))
         iInput |= IN_B;
-    if (joyInfo.dwButtons & (1 << gcJoystickButtons[iController][2]))
+    if (joyInfo.dwButtons & JOY_BUTTON_BIT(gcJoystickButtons[iController][2]))
         iInput |= IN_C;
-    if (joyInfo.dwButtons & (1 << gcJoystickButtons[iController][3]))
+    if (joyInfo.dwButtons & JOY_BUTTON_BIT(gcJoystickButtons[iController][3]))
         iInput |= IN_D;
-    if (joyInfo.dwButtons & (1 << gcJoystickButtons[iController][4]))
+    if (joyInfo.dwButtons & JOY_BUTTON_BIT(gcJoystickButtons[iController][4]))
         iInput |= IN_E;
-    if (joyInfo.dwButtons & (1 << gcJoystickButtons[iController][5]))
+    if (joyInfo.dwButtons & JOY_BUTTON_BIT(gcJoystickButtons[iController][5]))
         iInput |= IN_F;
-    if (joyInfo.dwButtons & (1 << gcJoystickButtons[iController][6]))
+    if (joyInfo.dwButtons & JOY_BUTTON_BIT(gcJoystickButtons[iController][6]))
         iInput |= IN_PAUSE;
     return iInput;
 }

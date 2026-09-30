@@ -9,9 +9,9 @@
 #include "kgt.h"
 
 /* ---- externs not (yet) in globals.h / protos.h ---- */
-extern int gbMidiOpen;                      /* 0x424738: the MIDI device is open */
-extern MCIDEVICEID guMidiDeviceId;          /* 0x42473c: MCI device of the MIDI sequencer */
-extern int giMidiLoopFlag;                  /* 0x424740: loop the MIDI file */
+#define gbMidiOpen BSS(int, gbMidiOpen)            /* 0x424738: the MIDI device is open */
+#define guMidiDeviceId BSS(MCIDEVICEID, guMidiDeviceId)  /* 0x42473c: MCI device of the MIDI sequencer */
+#define giMidiLoopFlag BSS(int, giMidiLoopFlag)    /* 0x424740: loop the MIDI file */
 void vDeleteTempMidFile(void);
 int iPlayAndCloseMidFile(void);
 /* ---- */
@@ -40,8 +40,9 @@ void vDeleteTempMidFile(void)
     char szPath[264];
 
     GetWindowsDirectoryA(szPath, MAX_PATH + 1);
-    /* sprintf onto its own first argument: appends the file name (works with this CRT) */
-    sprintf(szPath, "%s%s", szPath, gszMidFileName);
+    /* append the file name (the original: sprintf(szPath, "%s%s", szPath, gszMidFileName), printing
+       onto its own argument - it worked with VC6's CRT but is undefined behaviour in C) */
+    strcat(szPath, gszMidFileName);
     DeleteFileA(szPath);
 }
 
@@ -64,7 +65,7 @@ int iPlayAndCloseMidFile(void)
     } else {
         /* open the sequencer on <Windows directory>\2dfightermaker2nd20022.mid */
         GetWindowsDirectoryA(szPath, MAX_PATH + 1);
-        sprintf(szPath, "%s%s", szPath, gszMidFileName);
+        strcat(szPath, gszMidFileName);     /* sprintf(szPath, "%s%s", szPath, ...) in the original, see vDeleteTempMidFile */
         mciOpen.dwCallback = (DWORD)ghWnd;
         mciOpen.lpstrDeviceType = "sequencer";
         mciOpen.lpstrElementName = szPath;
@@ -109,7 +110,7 @@ void vWriteAndPlayMidFile(kgtSound *pSound)
     /* write the data to <Windows directory>\2dfightermaker2nd20022.mid */
     dwWritten = 0;
     GetWindowsDirectoryA(szPath, MAX_PATH + 1);
-    sprintf(szPath, "%s%s", szPath, gszMidFileName);
+    strcat(szPath, gszMidFileName);     /* sprintf(szPath, "%s%s", szPath, ...) in the original, see vDeleteTempMidFile */
     hMidiData = pSound->pAlloc;
     pMidiData = GlobalLock(hMidiData);
     hFile = CreateFileA(szPath, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);

@@ -10,37 +10,36 @@
  * "Player<1|2> JOY <name>" with the names of gpsKeyboardKeyNames / gpsJoystickKeyNames.
  */
 #include "kgt.h"
-extern char gszEmptyIniDefault[4];          /* 0x42478c: config.c: GetPrivateProfileStringA default */
 
 /* ---- externs not in globals.h / protos.h ---- */
 extern char *gpsContact;                          /* 0x41e2f4: message box caption */
-extern char *gpsLpAppName;                        /* 0x541f7c: ini section name ("TestPlay" or "GamePlay") */
-extern kgtGameState gkgtGameState;                /* 0x470020: state of the current game */
-extern char gszCurrentDirectory[256];             /* 0x4d1c60: directory of the executable (data files are opened from here) */
-extern BYTE gcKeyboardControlsSets[2][17];        /* 0x425980: key layout per player: up, left, down, right, A-F, pause (ini "PlayerN KEY ...") */
-extern BYTE gcJoystickButtons[2][7];              /* 0x445710: joystick button per input A-F, pause, per player (ini "PlayerN JOY ...") */
-extern int giConfigTestplayPlayer0Nb;             /* 0x4300e0: test play: character of player 0 */
-extern int giConfigTestplayPlayer0Cpu;            /* 0x4300e4: test play: player 0 CPU mode */
-extern int giConfigTestplayPlayer1Nb;             /* 0x4300f0: test play: character of player 1 */
-extern int giConfigTestplayPlayer1Cpu;            /* 0x4300f4: test play: player 1 CPU mode */
-extern int giConfigTestplayHitjudge;              /* 0x430100: test play: show hit boxes */
-extern int giConfigTestplayGamespeed;             /* 0x430104: test play: game speed */
-extern int giConfigTestplayGameinfo;              /* 0x430108: test play: show game information */
-extern int giConfigTestplayStageNb;               /* 0x43010c: test play: stage */
-extern int giConfigTestplayJoystick;              /* 0x430110: use the joysticks */
-extern int giConfigTestplayTime;                  /* 0x430114: round time setting */
-extern int giConfigTestplayExit;                  /* 0x430118: test play: quit when the window loses focus */
-extern int giConfigTestplayVsMode;                /* 0x430120: test play: versus mode */
-extern int giConfigNumberOfRounds;                /* 0x430124: rounds of a single game */
-extern int giConfigNumberOfRoundsTeamVs;          /* 0x430128: rounds of a team game */
-extern char gszConfigReturnedFilename[MAX_PATH];  /* 0x43012c: system file name (ini File/Filename) */
-extern int giConfigEditorDemoNb;                  /* 0x43022c: demo chosen in the editor (Editer.DemoNb) */
-extern int giConfigGameWindowPointX;              /* 0x425a48: window x (ini GameWindowPoint_x) */
-extern int giConfigGameWindowPointY;              /* 0x425a4c: window y (ini GameWindowPoint_y) */
-extern int giConfigGameWindowSizeX;               /* 0x447f20: window client width (ini GameWindowSize_x) */
-extern int giConfigGameWindowSizeY;               /* 0x447f24: window client height (ini GameWindowSize_y) */
-extern int giConfigGameScreenMode;                /* 0x4d1d60: display mode setting (ini GameScreenMode): 0 window, 1 full screen */
-extern int giHitJudge;                            /* 0x42470c: hit-judge display (hit boxes and player state), copy of giConfigTestplayHitjudge; the next int (0x424710) enables the line switch button */
+#define gpsLpAppName BSS(char *, gpsLpAppName)     /* 0x541f7c: ini section name ("TestPlay" or "GamePlay") */
+#define gkgtGameState BSS(kgtGameState, gkgtGameState)  /* 0x470020: state of the current game */
+#define gszCurrentDirectory BSS(char[256], gszCurrentDirectory)  /* 0x4d1c60: directory of the executable (data files are opened from here) */
+#define gcKeyboardControlsSets BSS(BYTE[2][17], gcKeyboardControlsSets)  /* 0x425980: key layout per player: up, left, down, right, A-F, pause (ini "PlayerN KEY ...") */
+#define gcJoystickButtons BSS(BYTE[2][7], gcJoystickButtons)  /* 0x445710: joystick button per input A-F, pause, per player (ini "PlayerN JOY ...") */
+#define giConfigTestplayPlayer0Nb BSS(int, giConfigTestplayPlayer0Nb)  /* 0x4300e0: test play: character of player 0 */
+#define giConfigTestplayPlayer0Cpu BSS(int, giConfigTestplayPlayer0Cpu)  /* 0x4300e4: test play: player 0 CPU mode */
+#define giConfigTestplayPlayer1Nb BSS(int, giConfigTestplayPlayer1Nb)  /* 0x4300f0: test play: character of player 1 */
+#define giConfigTestplayPlayer1Cpu BSS(int, giConfigTestplayPlayer1Cpu)  /* 0x4300f4: test play: player 1 CPU mode */
+#define giConfigTestplayHitjudge BSS(int, giConfigTestplayHitjudge)  /* 0x430100: test play: show hit boxes */
+#define giConfigTestplayGamespeed BSS(int, giConfigTestplayGamespeed)  /* 0x430104: test play: game speed */
+#define giConfigTestplayGameinfo BSS(int, giConfigTestplayGameinfo)  /* 0x430108: test play: show game information */
+#define giConfigTestplayStageNb BSS(int, giConfigTestplayStageNb)  /* 0x43010c: test play: stage */
+#define giConfigTestplayJoystick BSS(int, giConfigTestplayJoystick)  /* 0x430110: use the joysticks */
+#define giConfigTestplayTime BSS(int, giConfigTestplayTime)  /* 0x430114: round time setting */
+#define giConfigTestplayExit BSS(int, giConfigTestplayExit)  /* 0x430118: test play: quit when the window loses focus */
+#define giConfigTestplayVsMode BSS(int, giConfigTestplayVsMode)  /* 0x430120: test play: versus mode */
+#define giConfigNumberOfRounds BSS(int, giConfigNumberOfRounds)  /* 0x430124: rounds of a single game */
+#define giConfigNumberOfRoundsTeamVs BSS(int, giConfigNumberOfRoundsTeamVs)  /* 0x430128: rounds of a team game */
+#define gszConfigReturnedFilename BSS(char[MAX_PATH], gszConfigReturnedFilename)  /* 0x43012c: system file name (ini File/Filename) */
+#define giConfigEditorDemoNb BSS(int, giConfigEditorDemoNb)  /* 0x43022c: demo chosen in the editor (Editer.DemoNb) */
+#define giConfigGameWindowPointX BSS(int, giConfigGameWindowPointX)  /* 0x425a48: window x (ini GameWindowPoint_x) */
+#define giConfigGameWindowPointY BSS(int, giConfigGameWindowPointY)  /* 0x425a4c: window y (ini GameWindowPoint_y) */
+#define giConfigGameWindowSizeX BSS(int, giConfigGameWindowSizeX)  /* 0x447f20: window client width (ini GameWindowSize_x) */
+#define giConfigGameWindowSizeY BSS(int, giConfigGameWindowSizeY)  /* 0x447f24: window client height (ini GameWindowSize_y) */
+#define giConfigGameScreenMode BSS(int, giConfigGameScreenMode)  /* 0x4d1d60: display mode setting (ini GameScreenMode): 0 window, 1 full screen */
+#define giHitJudge BSS(int, giHitJudge)            /* 0x42470c: hit-judge display (hit boxes and player state), copy of giConfigTestplayHitjudge; the next int (0x424710) enables the line switch button */
 
 void vSaveOnlineNamesToIni(void);
 void vLoadKgt2kConfig(void);
@@ -177,7 +176,7 @@ void vLoadGameConfig(void)
     giConfigNumberOfRoundsTeamVs = GetPrivateProfileIntA(gpsLpAppName, gpsKeyTestplayVSTeamPlay, 3, szIniPath);
     giConfigNumberOfRounds = GetPrivateProfileIntA(gpsLpAppName, gpsKeyTestplayVSSinglePlay, 3, szIniPath);
     /* [File] Filename: the system file to load (default "") */
-    GetPrivateProfileStringA(gpsFileSection, gpsFilenameKey, gszEmptyIniDefault, gszConfigReturnedFilename, MAX_PATH, szIniPath);
+    GetPrivateProfileStringA(gpsFileSection, gpsFilenameKey, "", gszConfigReturnedFilename, MAX_PATH, szIniPath);
     /* controls of both players: "Player1 KEY 上", ..., "Player2 JOY PAUSE" */
     for (iPlayer = 0; iPlayer < 2; iPlayer++) {
         for (iEntry = 0; iEntry < 11; iEntry++) {

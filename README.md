@@ -1,22 +1,18 @@
 # KGT2nd_GAME
 
 C source of `KGT2nd_GAME.exe`, the game runtime of *2D Fighter Maker 2nd* (2D格闘ツクール2nd.,
-Enterbrain, 2002), built with the original toolchain.
+Enterbrain, 2002).
 
-**This is the `nonmatching` branch: every function is compiled from C.** Six functions come out with
-slightly different register and stack-slot choices than the original, so this executable differs from the
-shipped one in those functions only (the game plays the same). The **`main`** branch has the byte-exact
-build of the original:
-
-```
-SHA-256 287c6f39aea5265b126dff301af9e8fdf49e6edc78957eeb50aba38e6705326a  KGT2nd_GAME.exe  (main)
-SHA-256 e7ac09d44683c4bfba3c07bd7cbfd2a972be2103ab087aea64f28412be25d78d  KGT2nd_GAME.exe  (this branch)
-```
+**This is the `nonmatching` branch: the whole program is plain C, built by a modern C compiler
+alone** (clang from llvm-mingw, one command, no assembler, resource compiler or separate linker
+step). The executable is *not* byte-identical to the original and does not try to be; it plays the
+same. The **`main`** branch has the exact rebuild of the original executable with Visual C++ 6.0
+(SHA-256 `287c6f39aea5265b126dff301af9e8fdf49e6edc78957eeb50aba38e6705326a`).
 
 This repository contains only what the build needs. The decompilation work itself - matching tools,
 the Ghidra notes, rename history and style guide - is in the development repository `kgt2nd_decomp`,
-and what was learned about VC6 in `vc6-matching-notes`. Source comments that mention `docs/...` or
-`tools/...` files not present here refer to the development repository.
+and what was learned about VC6 in `vc6-matching-notes`. Source comments that mention `docs/...` files
+or VC6 details refer to that work and to the main branch.
 
 The executable's embedded artwork (three 640x480 bitmaps, a text bitmap and the icon) is in
 `rsrc/assets/`; these are Enterbrain's copyrighted images, so keep that in mind before publishing the
@@ -24,79 +20,110 @@ repository. No other game data is included.
 
 ## Requirements
 
-* Windows (the toolchain is 32-bit Windows software; tested on Windows 11).
-* **Microsoft Visual C++ 6.0**, RTM (`cl` 12.00.8168, `link` 6.00.8168, `rc`, `cvtres` 5.00.1720).
-  The build expects it in `C:\Program Files (x86)\Microsoft Visual Studio`; set `VC6DIR` otherwise.
-  The Rich header records these RTM builds; the match has only been checked with them.
-* **[JWasm](https://github.com/JWasm/JWasm) 2.x** (assembles the blitter into an OMF object). Put
-  `JWasm.exe` in `tools/bin/` (ignored by git), on `PATH`, or point `KGT_JWASM` at it.
-* **Python 3** with the packages in `requirements.txt` (`pip install -r requirements.txt`).
+* Windows (64-bit Windows 10/11 is fine: the game is a 32-bit program and runs under WOW64; tested on
+  Windows 11).
+* **[llvm-mingw](https://github.com/mstorsjo/llvm-mingw)**, any recent release (it needs C23
+  `#embed`, i.e. clang 19 or later). Tested with llvm-mingw 20260922 (clang 23.1.2), the
+  `ucrt-x86_64` package, whose `i686-w64-mingw32-clang` builds 32-bit programs. It brings the
+  mingw-w64 headers and import libraries for DirectDraw, DirectSound and DirectPlay.
 
-The original executable is not needed.
+  The target must be 32-bit x86 (`i686`): the game keeps pointers in 32-bit fields of its data
+  structures and files. With the `ucrt` packages the executable uses the Universal C Runtime that
+  is part of Windows 10 and 11 (the `msvcrt` packages would give one for older Windows; untested).
+  It needs no other DLLs than Windows' own.
+
+  GCC from mingw-w64 (i686, version 15 or later for `#embed`) should work too, but is untested.
+
+Nothing else: no Python, no Visual C++, no assembler.
 
 ## Building
 
 ```
-pip install -r requirements.txt
-python build.py
+build.cmd
 ```
 
-The result is `build/KGT2nd_GAME.exe`. The build ends by comparing its SHA-256 with the known hash of
-this branch's build and prints `MATCH: identical to the known all-C build` (or `DIFFERENT`, exit code 1).
-`python build.py --no-verify` skips the check.
+`build.cmd` uses the compiler in `%CC%`, or `i686-w64-mingw32-clang` from `PATH`, e.g.
 
-What `build.py` does, in order:
+```
+set "CC=C:\llvm-mingw\bin\i686-w64-mingw32-clang.exe"
+build.cmd
+```
 
-1. compiles `rsrc/kgt2nd.rc` (with the images in `rsrc/assets/`) and normalizes the result
-   (`tools/fix_res.py`),
-2. generates the uninitialized-data layout (`tools/gen_game_bss.py`) and assembles `asm/blit.asm`,
-3. compiles the 14 translation units in `src/` with `cl /Ox /Oa`,
-4. makes a copy of your `LINK.EXE` that uses the `qsort` of VC6's own C runtime (`tools/mklink.py`)
-   and links everything in the original order,
-5. reproduces the post-link changes the original went through (`tools/postlink.py`),
-6. checks the SHA-256 of the result against this branch's known hash.
+The result is `build\KGT2nd_GAME.exe`. Extra arguments go to the compiler (`build.cmd -O0 -g` for a
+debug build; an `-O` option replaces the default `-O2`).
 
-## Functions that differ from the original
+The same build as one command, to run by hand from any shell in the repository directory (list the
+sources explicitly where the shell does not expand `src/*.c`; llvm-mingw's clang also expands the
+wildcard itself):
 
-180 of the 186 C functions compile to exactly the original machine code (the assembler blitter is
-reproduced exactly as well). The other 6 are complete, behaviour-identical C, but VC6 still picks slightly
-different registers or stack slots for them:
+```
+i686-w64-mingw32-clang -std=gnu23 -O2 -fwrapv -fno-strict-aliasing -Wno-switch -mwindows -Iinclude src/*.c -o build/KGT2nd_GAME.exe -lddraw -ldsound -ldplayx -lwsock32 -lwinmm
+```
 
-`vjmpHandleBattleInterface` (6 instructions differ), `bReadKgtCore` (15), `vDrawCurrentEngineObject` (46),
-`vDrawKgtImage16` (59), `vBlitImageRect16` (60) and `vHandleHitboxEffects` (93).
+* `-fwrapv` and `-fno-strict-aliasing` are required: signed overflow must wrap as in the original's
+  machine code, and the uninitialized globals are one block of memory accessed through different
+  types (see below), as are parts of the game's data structures.
+* `-Wno-switch` only silences warnings about `switch` statements over enums that do not list every
+  value.
 
-## Branches
+## Running
 
-* **`main`**: the exact byte match of the original executable; those 6 functions are built from the
-  original's machine code there.
-* **`nonmatching`** (this branch): the same program with those 6 functions compiled from C.
+Copy the executable into the game's folder, next to its data files. The game loads the system file
+named after the executable (`NAME.exe` loads `NAME.kgt`), so give it the name of the game's
+executable. Settings are read from `game.ini` in the same folder.
+
+* **DirectPlay**: like the original, the executable imports `dplayx.dll` and lists the DirectPlay
+  service providers at start-up. On Windows 10/11 DirectPlay is an optional feature ("Legacy
+  Components"); it is only used by the netplay dialog, which the shipped menu does not offer, so if
+  Windows asks to install it, the game works either way.
+* **No icon or version information in Explorer**: the executable has no resource section (see below),
+  so Explorer shows a generic icon and no version details. The window, the taskbar and the about box
+  show the game's icon. If you want them in the file as well, compile `rsrc/kgt2nd.rc` with
+  llvm-mingw's resource compiler and link the result in (optional, not part of the build). The `.rc`
+  is UTF-16, which llvm-rc does not read, so convert it to UTF-8 first:
+
+  ```
+  powershell -Command "[IO.File]::WriteAllText('build\kgt2nd_utf8.rc', [IO.File]::ReadAllText('rsrc\kgt2nd.rc', [Text.Encoding]::Unicode))"
+  i686-w64-mingw32-windres -c 65001 -I rsrc/assets build/kgt2nd_utf8.rc -O coff -o build/kgt2nd.res.o
+  ```
+
+  and add `build/kgt2nd.res.o` to the compile command above (e.g. `build.cmd build\kgt2nd.res.o`).
+  The game itself still uses the compiled-in copies.
+
+## How this branch differs from the original build
+
+* **Uninitialized globals** (`include/game_bss.h`, `src/game_bss.c`): the code relies on the
+  original memory layout in places (a variable cleared or indexed together with its neighbours,
+  names for fields inside other variables), so all of them are parts of one object, `gBss`, at their
+  original offsets. Each file declares the variables it uses as `#define name BSS(type, name)`
+  instead of `extern type name;`. On the main branch the same table (`asm/game_bss.txt`) is
+  assembled into the executable's `.bss`.
+* **Resources** (`src/resources.c`, generated from `rsrc/kgt2nd.rc` by `tools/gen_resources.py`):
+  the bitmaps and the icon are included with `#embed`, the menu and dialog templates are written out
+  as data (identical to the original's), and a few functions stand in for the resource APIs
+  (`FindResource`/`LockResource`, `LoadIcon`, the class menu, `DialogBoxParam`). Rerun the script
+  (Python 3) only after changing the `.rc`; the build does not need it.
+* **The blitter** (`src/blit.c`): the hand-written assembler routines of the original, in C.
+* **Portability fixes**, each commented in the source: undefined behaviour that VC6 happened to
+  compile as intended but a modern optimizer may not (a parameter read through its neighbour's
+  address, `sprintf` onto its own argument, uninitialized locals, out-of-range shift counts), enums
+  kept `int` as with MSVC, a function that returned no value, and a `GlobalFree` of a resource pointer
+  (harmless in the original, fatal in this build).
+* Everything VC6-specific that only served the byte match (the C++ stub, the empty `.def` file, the
+  post-link steps) is gone.
 
 ## Layout
 
 | path | contents |
 |---|---|
-| `build.py` | the build |
-| `src/*.c` | the game, one file per original translation unit, in link order (see `SOURCES` in `build.py`) |
-| `src/cppunit.cpp` | stand-in for the original's one C++ translation unit, which left no code behind |
-| `src/exe.def` | the original's empty `EXPORTS` .def file (hence the empty export directory) |
-| `include/` | types (`kgt_types.h`), globals, prototypes |
-| `asm/blit.asm` | the hand-written 8-bit blitter (the original was an assembler object) |
-| `asm/game_bss.txt` | address, size and name of every uninitialized global |
-| `rsrc/kgt2nd.rc`, `rsrc/assets/` | resources (dialogs, menus, strings, version info) and the embedded images |
-| `tools/` | the build steps: `toolchain.py` (tool locations and flags), `fix_res.py`, `gen_game_bss.py`, `mklink.py` (with `coff.py`), `postlink.py` |
+| `build.cmd` | the build |
+| `src/*.c` | the game, one file per original translation unit (plus `game_bss.c`, `resources.c`, `blit.c`) |
+| `include/` | types (`kgt_types.h`), globals (`globals.h`, `game_bss.h`), prototypes, `blit.h` |
+| `rsrc/kgt2nd.rc`, `rsrc/assets/` | the resources (dialogs, menu, version info) and the embedded images |
+| `tools/gen_resources.py` | regenerates `src/resources.c` from the `.rc` (not needed to build) |
 
 ## How the original was built (as far as can be told)
 
-* Visual C++ 6.0, release build with `/Ox /Oa` (not `/O2`: no string pooling), statically linked
-  against `LIBC.LIB`, with a `.def` file with an empty `EXPORTS` section (the export directory
-  records the project's output name, `exe.exe`).
-* 13 C files, 1 C++ file and one assembler object (the blitter), as recorded in the Rich header.
-* Linked on a Windows of its time. LINK 6.00 orders the import address table with msvcrt's `qsort`,
-  whose algorithm changed in later Windows versions, so `build.py` links with a copy of LINK.EXE
-  that uses VC6's own `qsort` (built from your VC6 install by `tools/mklink.py`).
-* In October 2002 the resources were replaced with the Win32 `UpdateResource` API, which rewrote
-  `.rsrc` in its own layout, left a stray section header behind, marked `.rdata` writable and kept
-  the checksum LINK had computed for the earlier resources. `tools/postlink.py` reproduces that.
-* Uninitialized globals: the compiler orders them by an internal hash, so rather than guessing
-  declaration orders they are laid out explicitly in `asm/game_bss.txt` and defined by the
-  assembler object (plain `.bss` and communal variables).
+* Visual C++ 6.0, release build with `/Ox /Oa`, statically linked against `LIBC.LIB`, 13 C files, 1
+  C++ file and one assembler object (the blitter); resources replaced after linking with the Win32
+  `UpdateResource` API. The main branch reproduces all of this byte for byte.

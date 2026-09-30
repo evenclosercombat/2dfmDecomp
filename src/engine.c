@@ -21,8 +21,9 @@
  *     trails, flashes).
  *
  * Four functions here (vjmpHandleBattleInterface, vBlitImageRect16, vDrawKgtImage16,
- * vDrawCurrentEngineObject) do not compile to the original bytes yet; they are emitted as byte-exact
- * stand-ins (see docs/MATCHING.md, "Functions that do not match yet").
+ * vDrawCurrentEngineObject) do not compile to the original bytes with VC6 yet; the main branch
+ * builds them from the original's machine code (see docs/MATCHING.md, "Functions that do not match
+ * yet"), this branch from the C below.
  */
 #include "kgt.h"
 
@@ -30,61 +31,62 @@
 /* declarations not (yet) in globals.h / protos.h                                              */
 /* ------------------------------------------------------------------------------------------ */
 
-extern kgtEngineObject gkgtEngineObjects[1024];    /* 0x4701e0: all engine objects */
-extern kgtEngineObject *gpkgtCurrentEngineObject;  /* 0x4cfa00: object whose handler is running */
-extern kgtGameState gkgtGameState;                 /* 0x470020: state of the current game */
-extern int giConfigTestplayGamespeed;              /* 0x430104: test play: game speed */
-extern int giGamespeedFrames;                      /* 0x445704: game speed setting in effect */
-extern int giPlayerMomentumScalar;                 /* 0x541f78: multiplier of script momentum values (game speed) */
-extern int giGravityScalar;                        /* 0x445700: multiplier of script gravity values (game speed) */
-extern int giDemoTime;                             /* 0x424f08: frames left of the demo */
-extern char gcDemoSkipWithInput;                   /* 0x424f04: copy of the demo's cSkipWithInput */
-extern int giStoryModeSide;                        /* 0x424f24: copy of giStoryModePlayerIdx taken when the story character is chosen; indexes giCurrentStoryStep */
-extern int giCurrentStoryStep[2];                  /* 0x424f28: story entry per side */
+#define gkgtEngineObjects BSS(kgtEngineObject[1024], gkgtEngineObjects)  /* 0x4701e0: all engine objects */
+#define gpkgtCurrentEngineObject BSS(kgtEngineObject *, gpkgtCurrentEngineObject)  /* 0x4cfa00: object whose handler is running */
+#define gkgtGameState BSS(kgtGameState, gkgtGameState)  /* 0x470020: state of the current game */
+#define giConfigTestplayGamespeed BSS(int, giConfigTestplayGamespeed)  /* 0x430104: test play: game speed */
+#define giGamespeedFrames BSS(int, giGamespeedFrames)  /* 0x445704: game speed setting in effect */
+#define giPlayerMomentumScalar BSS(int, giPlayerMomentumScalar)  /* 0x541f78: multiplier of script momentum values (game speed) */
+#define giGravityScalar BSS(int, giGravityScalar)  /* 0x445700: multiplier of script gravity values (game speed) */
+#define giDemoTime BSS(int, giDemoTime)            /* 0x424f08: frames left of the demo */
+#define gcDemoSkipWithInput BSS(char, gcDemoSkipWithInput)  /* 0x424f04: copy of the demo's cSkipWithInput */
+#define giStoryModeSide BSS(int, giStoryModeSide)  /* 0x424f24: copy of giStoryModePlayerIdx taken when the story character is chosen; indexes giCurrentStoryStep */
+#define giCurrentStoryStep BSS(int[2], giCurrentStoryStep)  /* 0x424f28: story entry per side */
 /* vProgressStoryMode accesses giStoryModeSide and giCurrentStoryStep as one struct: the store to
    iStep[iPlayer] makes the compiler reload iPlayer, which the original does */
 typedef struct { int iPlayer; int iStep[2]; } kgtStoryVars;
 #define STORY (*(kgtStoryVars *)&giStoryModeSide)
-extern int giStoryFrontStageFlag;           /* 0x424f0c: story mode divergence type 1 (front stage) jumps when it is 1; only ever cleared */
-extern int giRoundsNotWon;                  /* 0x424e64: story mode: fights not won (divergence type 3 needs 0) */
-extern DWORD giAnyInputXor;                 /* 0x4280d8: giLastInputXor of all players ORed */
-extern DWORD giLastInputCleaned[8];         /* 0x447f40: newly pressed or auto-repeated inputs (menus) */
-extern DWORD giLastInputXor[8];             /* 0x447f60: inputs newly pressed this frame */
-extern int giStoryModePlayerIdx;            /* 0x424f20: player (0/1) who started story mode */
-extern int giConfigTestplayVsMode;          /* 0x430120: test play: versus mode */
-extern int giConfigNumberOfRounds;          /* 0x430124: rounds of a single game */
-extern int giConfigNumberOfRoundsTeamVs;    /* 0x430128: rounds of a team game */
-extern int giBattlePrestartTimer;           /* 0x424f00: frames before the fight starts */
-extern int giCameraX;                       /* 0x447f2c: camera x (pixels) */
-extern int giCameraY;                       /* 0x447f30: camera y (pixels) */
-extern DWORD giAnyInput;                    /* 0x4cfa04: giUserKeydowns of all players ORed */
-extern int giGameModes[3];                  /* 0x424e40: game modes offered by the title menu (GAME_MODES) */
-extern int giAmountOfGameModes;             /* 0x424e60: number of menu entries - 1 */
-extern int giMenuSelectionIdx;              /* 0x424780: title menu entry selected */
-extern int gbStoryMode;                     /* 0x424714: 1 = story mode chosen in the title menu */
-extern int giStoryModeCurrentRound;         /* 0x424f34: round in the current story fight */
-extern int giStoryWinsP1;                   /* 0x424f38: story mode: saved rounds won of player 1 (carry over) */
-extern int giStoryWinsP2;                   /* 0x424f3c: story mode: saved rounds won of player 2 */
-extern int giConfigTestplayStageNb;         /* 0x43010c: test play: stage */
-extern int giConfigTestplayTime;            /* 0x430114: round time setting */
-extern int giShakeXMode;                    /* 0x447da9: screen shake x (script command EB): mode; vCalculateShake takes the 5 ints */
-extern int giShakeXOffset;                  /* 0x447dad: current x offset (pixels) */
-extern int giShakeXAmplitude;               /* 0x447db1: amplitude */
-extern int giShakeXTimeLeft;                /* 0x447db5: frames left */
-extern int giShakeXDuration;                /* 0x447db9: total frames */
-extern int giShakeYMode;                    /* 0x447dbd: screen shake y: mode */
-extern int giShakeYOffset;                  /* 0x447dc1: current y offset (pixels) */
-extern int giShakeYAmplitude;               /* 0x447dc5: amplitude */
-extern int giShakeYTimeLeft;                /* 0x447dc9: frames left */
-extern int giShakeYDuration;                /* 0x447dcd: total frames */
-/* 0x424718: set to end the round at once (Ghidra DAT_00424718); main.c declares it as giForceRoundEnd, engine.c reaches it through gbStoryMode */
-#define giForceRoundEnd ((&gbStoryMode)[1])
-extern kgtGridCoordinates gkgtSelectCursor1;      /* 0x424e50: character select: 1P cursor */
-extern kgtGridCoordinates gkgtSelectCursor2;      /* 0x424e58: character select: 2P cursor */
-extern kgtGridCoordinates gkgtStorySelectCursor;  /* 0x424e68: character select cursor in story mode */
-/* 0x424e80: team battle portrait objects [side * 4 + member]; this variable has no symbol of its own in
-   asm/game_bss.txt, so it is addressed relative to gkgtStorySelectCursor */
-#define gpTeamPortraits ((kgtEngineObject **)((char *)&gkgtStorySelectCursor + 0x18))
+#define giStoryFrontStageFlag BSS(int, giStoryFrontStageFlag)  /* 0x424f0c: story mode divergence type 1 (front stage) jumps when it is 1; only ever cleared */
+#define giRoundsNotWon BSS(int, giRoundsNotWon)    /* 0x424e64: story mode: fights not won (divergence type 3 needs 0) */
+#define giAnyInputXor BSS(DWORD, giAnyInputXor)    /* 0x4280d8: giLastInputXor of all players ORed */
+#define giLastInputCleaned BSS(DWORD[8], giLastInputCleaned)  /* 0x447f40: newly pressed or auto-repeated inputs (menus) */
+#define giLastInputXor BSS(DWORD[8], giLastInputXor)  /* 0x447f60: inputs newly pressed this frame */
+#define giStoryModePlayerIdx BSS(int, giStoryModePlayerIdx)  /* 0x424f20: player (0/1) who started story mode */
+#define giConfigTestplayVsMode BSS(int, giConfigTestplayVsMode)  /* 0x430120: test play: versus mode */
+#define giConfigNumberOfRounds BSS(int, giConfigNumberOfRounds)  /* 0x430124: rounds of a single game */
+#define giConfigNumberOfRoundsTeamVs BSS(int, giConfigNumberOfRoundsTeamVs)  /* 0x430128: rounds of a team game */
+#define giBattlePrestartTimer BSS(int, giBattlePrestartTimer)  /* 0x424f00: frames before the fight starts */
+#define giCameraX BSS(int, giCameraX)              /* 0x447f2c: camera x (pixels) */
+#define giCameraY BSS(int, giCameraY)              /* 0x447f30: camera y (pixels) */
+#define giAnyInput BSS(DWORD, giAnyInput)          /* 0x4cfa04: giUserKeydowns of all players ORed */
+#define giGameModes BSS(int[3], giGameModes)       /* 0x424e40: game modes offered by the title menu (GAME_MODES) */
+#define giAmountOfGameModes BSS(int, giAmountOfGameModes)  /* 0x424e60: number of menu entries - 1 */
+#define giMenuSelectionIdx BSS(int, giMenuSelectionIdx)  /* 0x424780: title menu entry selected */
+#define gbStoryMode BSS(int, gbStoryMode)          /* 0x424714: 1 = story mode chosen in the title menu */
+#define giStoryModeCurrentRound BSS(int, giStoryModeCurrentRound)  /* 0x424f34: round in the current story fight */
+#define giStoryWinsP1 BSS(int, giStoryWinsP1)      /* 0x424f38: story mode: saved rounds won of player 1 (carry over) */
+#define giStoryWinsP2 BSS(int, giStoryWinsP2)      /* 0x424f3c: story mode: saved rounds won of player 2 */
+#define giConfigTestplayStageNb BSS(int, giConfigTestplayStageNb)  /* 0x43010c: test play: stage */
+#define giConfigTestplayTime BSS(int, giConfigTestplayTime)  /* 0x430114: round time setting */
+#define giShakeXMode BSS(int, giShakeXMode)        /* 0x447da9: screen shake x (script command EB): mode; vCalculateShake takes the 5 ints */
+#define giShakeXOffset BSS(int, giShakeXOffset)    /* 0x447dad: current x offset (pixels) */
+#define giShakeXAmplitude BSS(int, giShakeXAmplitude)  /* 0x447db1: amplitude */
+#define giShakeXTimeLeft BSS(int, giShakeXTimeLeft)  /* 0x447db5: frames left */
+#define giShakeXDuration BSS(int, giShakeXDuration)  /* 0x447db9: total frames */
+#define giShakeYMode BSS(int, giShakeYMode)        /* 0x447dbd: screen shake y: mode */
+#define giShakeYOffset BSS(int, giShakeYOffset)    /* 0x447dc1: current y offset (pixels) */
+#define giShakeYAmplitude BSS(int, giShakeYAmplitude)  /* 0x447dc5: amplitude */
+#define giShakeYTimeLeft BSS(int, giShakeYTimeLeft)  /* 0x447dc9: frames left */
+#define giShakeYDuration BSS(int, giShakeYDuration)  /* 0x447dcd: total frames */
+/* 0x424718: set to end the round at once (Ghidra DAT_00424718).  (The VC6 build reached it as
+   (&gbStoryMode)[1], one int past gbStoryMode; here it is named directly.) */
+#define giForceRoundEnd BSS(int, giForceRoundEnd)
+#define gkgtSelectCursor1 BSS(kgtGridCoordinates, gkgtSelectCursor1)  /* 0x424e50: character select: 1P cursor */
+#define gkgtSelectCursor2 BSS(kgtGridCoordinates, gkgtSelectCursor2)  /* 0x424e58: character select: 2P cursor */
+#define gkgtStorySelectCursor BSS(kgtGridCoordinates, gkgtStorySelectCursor)  /* 0x424e68: character select cursor in story mode */
+/* 0x424e80: team battle portrait objects [side * 4 + member].  (The VC6 build addressed it as
+   gkgtStorySelectCursor + 0x18; here it is named directly.) */
+#define gpTeamPortraits BSS(kgtEngineObject *[32], gpTeamPortraits)
 
 /* engine.c part B (0x409a60-0x40e4a0) */
 void vjmpStartGame(void);
@@ -2119,36 +2121,35 @@ void vjmpHandleBattleState(void)
 /* declarations not (yet) in globals.h / protos.h                                              */
 /* ------------------------------------------------------------------------------------------ */
 
-extern kgtEngineObject gkgtEngineObjects[1024];    /* 0x4701e0: all engine objects */
-extern kgtEngineObject *gpkgtCurrentEngineObject;  /* 0x4cfa00: object whose handler is running */
-extern kgtGameState gkgtGameState;                 /* 0x470020: state of the current game */
+#define gkgtEngineObjects BSS(kgtEngineObject[1024], gkgtEngineObjects)  /* 0x4701e0: all engine objects */
+#define gpkgtCurrentEngineObject BSS(kgtEngineObject *, gpkgtCurrentEngineObject)  /* 0x4cfa00: object whose handler is running */
+#define gkgtGameState BSS(kgtGameState, gkgtGameState)  /* 0x470020: state of the current game */
 extern void (*gpfnGamestateJumptable[18])(void);   /* 0x41ed58: handler per kgtJumptableEndpoints value */
 extern unsigned int guHitboxColors[4];             /* 0x41eda0: hit box colours (RGB555): [0] attack boxes, [1] guard boxes */
-extern int giStartGameUnusedA;                     /* 0x424708: cleared by vjmpStartGame, otherwise unused */
-extern int giStartGameUnusedB;                     /* 0x447f28: cleared by vjmpStartGame, otherwise unused */
-extern kgtBMPINFO gkgtBitmaps[128];                /* 0x424f60: external bitmaps: [1] text.bmp (fonts, digits), others by kgtEngineObject.iDrawFlag */
-extern DWORD giAnyInputXor;                        /* 0x4280d8: giLastInputXor of all players ORed */
-extern int giCameraX;                              /* 0x447f2c: camera x (pixels) */
-extern int giCameraY;                              /* 0x447f30: camera y (pixels) */
-extern int giStoryModeSide;                        /* 0x424f24: copy of giStoryModePlayerIdx taken when the story character is chosen; indexes giCurrentStoryStep */
-extern int giCurrentStoryStep[2];                  /* 0x424f28: story entry per side */
-extern char gszConfigReturnedFilename[];           /* 0x43012c: system file name (ini File/Filename) */
-extern int giConfigTestplayPlayer0Nb;              /* 0x4300e0: test play: character of player 0 */
-extern int giConfigTestplayPlayer0Cpu;             /* 0x4300e4: test play: player 0 CPU mode */
-extern int giConfigTestplayPlayer1Nb;              /* 0x4300f0: test play: character of player 1 */
-extern int giConfigTestplayPlayer1Cpu;             /* 0x4300f4: test play: player 1 CPU mode */
-extern int giConfigTestplayStageNb;                /* 0x43010c: test play: stage */
-extern void *gpFrameBits;                          /* 0x4246cc: pixels of the frame buffer: 640x480, 16 bit (RGB555 in a window, RGB565 full screen) */
-extern int giScreenMode;                           /* 0x424704: display mode in use: 0 window (RGB555 DIB), 1 full screen (RGB565 surface) */
-extern int giHitJudge;                             /* 0x42470c: hit-judge display (hit boxes and player state), copy of giConfigTestplayHitjudge; the next int (0x424710) enables the line switch button */
-extern void *gpGlobalMemoryAlloc;                  /* 0x425a44: decompression buffer */
-extern WORD gwTintedPalette16[256];                /* 0x4d1a20: palette of the image being drawn, tinted, in the screen pixel format */
-extern int giShakeXOffset;                         /* 0x447dad: current x offset (pixels) */
-extern int giShakeYOffset;                         /* 0x447dc1: current y offset (pixels) */
-extern int giReverseShakeDirection;                /* 0x4456fc: frame counter; its low bit flips the shake direction */
-extern int giSystemFlashType;                      /* 0x4456d0: colour effect of system objects (layout of kgt_character_struct.flash): 1 smooth, 2 blinking, 3 random */
-extern int giStageFlashType;                       /* 0x447d7d: colour effect of stage objects (layout of kgt_character_struct.flash), kgt_stage + 0x263d */
-extern char gszEmptyBgFile[4];                     /* 0x424784: engine.c: iLoadExternalImage(..., "bg_001_0.bmp", "", 0) */
+#define giStartGameUnusedA BSS(int, giStartGameUnusedA)  /* 0x424708: cleared by vjmpStartGame, otherwise unused */
+#define giStartGameUnusedB BSS(int, giStartGameUnusedB)  /* 0x447f28: cleared by vjmpStartGame, otherwise unused */
+#define gkgtBitmaps BSS(kgtBMPINFO[128], gkgtBitmaps)  /* 0x424f60: external bitmaps: [1] text.bmp (fonts, digits), others by kgtEngineObject.iDrawFlag */
+#define giAnyInputXor BSS(DWORD, giAnyInputXor)    /* 0x4280d8: giLastInputXor of all players ORed */
+#define giCameraX BSS(int, giCameraX)              /* 0x447f2c: camera x (pixels) */
+#define giCameraY BSS(int, giCameraY)              /* 0x447f30: camera y (pixels) */
+#define giStoryModeSide BSS(int, giStoryModeSide)  /* 0x424f24: copy of giStoryModePlayerIdx taken when the story character is chosen; indexes giCurrentStoryStep */
+#define giCurrentStoryStep BSS(int[2], giCurrentStoryStep)  /* 0x424f28: story entry per side */
+#define gszConfigReturnedFilename BSS(char[], gszConfigReturnedFilename)  /* 0x43012c: system file name (ini File/Filename) */
+#define giConfigTestplayPlayer0Nb BSS(int, giConfigTestplayPlayer0Nb)  /* 0x4300e0: test play: character of player 0 */
+#define giConfigTestplayPlayer0Cpu BSS(int, giConfigTestplayPlayer0Cpu)  /* 0x4300e4: test play: player 0 CPU mode */
+#define giConfigTestplayPlayer1Nb BSS(int, giConfigTestplayPlayer1Nb)  /* 0x4300f0: test play: character of player 1 */
+#define giConfigTestplayPlayer1Cpu BSS(int, giConfigTestplayPlayer1Cpu)  /* 0x4300f4: test play: player 1 CPU mode */
+#define giConfigTestplayStageNb BSS(int, giConfigTestplayStageNb)  /* 0x43010c: test play: stage */
+#define gpFrameBits BSS(void *, gpFrameBits)       /* 0x4246cc: pixels of the frame buffer: 640x480, 16 bit (RGB555 in a window, RGB565 full screen) */
+#define giScreenMode BSS(int, giScreenMode)        /* 0x424704: display mode in use: 0 window (RGB555 DIB), 1 full screen (RGB565 surface) */
+#define giHitJudge BSS(int, giHitJudge)            /* 0x42470c: hit-judge display (hit boxes and player state), copy of giConfigTestplayHitjudge; the next int (0x424710) enables the line switch button */
+#define gpGlobalMemoryAlloc BSS(void *, gpGlobalMemoryAlloc)  /* 0x425a44: decompression buffer */
+#define gwTintedPalette16 BSS(WORD[256], gwTintedPalette16)  /* 0x4d1a20: palette of the image being drawn, tinted, in the screen pixel format */
+#define giShakeXOffset BSS(int, giShakeXOffset)    /* 0x447dad: current x offset (pixels) */
+#define giShakeYOffset BSS(int, giShakeYOffset)    /* 0x447dc1: current y offset (pixels) */
+#define giReverseShakeDirection BSS(int, giReverseShakeDirection)  /* 0x4456fc: frame counter; its low bit flips the shake direction */
+#define giSystemFlashType BSS(int, giSystemFlashType)  /* 0x4456d0: colour effect of system objects (layout of kgt_character_struct.flash): 1 smooth, 2 blinking, 3 random */
+#define giStageFlashType BSS(int, giStageFlashType)  /* 0x447d7d: colour effect of stage objects (layout of kgt_character_struct.flash), kgt_stage + 0x263d */
 
 /* A skill-script step (kgtSkill, 16 bytes) viewed as an image step (command 0x0C). */
 #pragma pack(push, 1)
@@ -2193,7 +2194,7 @@ typedef struct kgtStageLayerSet {
 } kgtStageLayerSet;
 #pragma pack(pop)
 
-extern kgtStageLayerSet gAfterImageLayers[];  /* 0x447f80: engine.c's view of gAfterImageTrails (drawing) */
+#define gAfterImageLayers BSS(kgtStageLayerSet[], gAfterImageLayers)  /* 0x447f80: engine.c's view of gAfterImageTrails (drawing) */
 
 int iLoadExternalImage(kgtBMPINFO *pInfo, LPCSTR szResource, LPCSTR szFile, int iUnused);   /* main_b.c */
 int iKgtDecompress(BYTE *pDst, BYTE *pSrc, int iSrcLen);                                       /* compress.c */
@@ -2261,7 +2262,7 @@ void vjmpStartGame(void)
         if ((szName[0] == 'K' || szName[0] == 'k') && (szName[1] == 'G' || szName[1] == 'g')
             && (szName[2] == 'T' || szName[2] == 't'))
             goto test_play;         /* the KGT player exe: use the editor's file */
-        sprintf(szName, "%s.kgt", szName);
+        strcat(szName, ".kgt");     /* the original: sprintf(szName, "%s.kgt", szName), printing onto its own argument (undefined behaviour in C) */
         if (iOpenKgtSystemFile(szName) != 0) {
             PostQuitMessage(0);
             return;
@@ -2979,7 +2980,7 @@ void vjmpScreenControl(void)
     case 10:    /* stage background */
         gpkgtCurrentEngineObject->iProcessStep = 11;
         gpkgtCurrentEngineObject->iDrawFlag = gpkgtCurrentEngineObject->iDepth;
-        iLoadExternalImage(&gkgtBitmaps[gpkgtCurrentEngineObject->iDrawFlag], "bg_001_0.bmp", gszEmptyBgFile, 0);
+        iLoadExternalImage(&gkgtBitmaps[gpkgtCurrentEngineObject->iDrawFlag], "bg_001_0.bmp", "", 0);
         gpkgtCurrentEngineObject->iPosX = 0;
         gpkgtCurrentEngineObject->iPosY = 0;
         return;

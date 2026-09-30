@@ -217,6 +217,10 @@ enum kgtJumptableEndpoints {   /* kgtEngineObject.iJumpIdx: the object's handler
     BATTLE_UI = 15,                         /* gauges, faces and marks (vjmpHandleBattleInterface) */
     STORY_MODE = 16,                        /* story progress (vjmpInitiateStoryMode) */
     DISPLAY_TITLE_SCREEN = 17,              /* vjmpDisplayTitleScreens */
+    /* (not a value of the game: a negative enumerator gives the enum the type int, as MSVC does;
+       GNU C compilers otherwise make an enum without negative values unsigned int, which would turn
+       comparisons such as iJumpIdx > RESET_IDX into unsigned ones) */
+    JUMPTABLE_ENDPOINTS_SIGNED = -1
 };
 
 enum kgtEngineObjectTypes {   /* kgtEngineObject.iObjectType: which file's skills the object runs */
@@ -226,6 +230,7 @@ enum kgtEngineObjectTypes {   /* kgtEngineObject.iObjectType: which file's skill
     DEMO_ENGINE_OBJECT = 3,                 /* demo file skills */
     STAGE_ENGINE_OBJECT = 4,                /* stage file skills */
     CHARACTER_ENGINE_OBJECT = 5,            /* only the R1 companion: skill R1 run as an extra object alongside the player (character skills) */
+    ENGINE_OBJECT_TYPES_SIGNED = -1         /* (see kgtJumptableEndpoints) */
 };
 
 struct kgtEngineObject {   /* size 0x17e: one engine object (gkgtEngineObjects[1024]): players, effects, UI parts and the game-state controllers; iJumpIdx selects its handler */
@@ -661,6 +666,7 @@ enum GAME_MODES {   /* kgtGameState.kgtGameMode */
     GAME_MODE_VS_SINGLE = 1,                /* versus, one character per side */
     GAME_MODE_VS_TEAM = 2,                  /* versus, teams of up to 4 */
     GAME_MODE_UNK_3 = 3,                    /* not used by the code */
+    GAME_MODES_SIGNED = -1                  /* (see kgtJumptableEndpoints) */
 };
 
 struct kgtGameState {   /* size 0x1ac: state of the current game (gkgtGameState): mode, round, timer, character select */
