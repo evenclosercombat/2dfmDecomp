@@ -1,20 +1,10 @@
 # KGT2nd_GAME
 
-C source of `KGT2nd_GAME.exe`, the game runtime of *2D Fighter Maker 2nd* (2D格闘ツクール2nd.,
-Enterbrain, 2002), that rebuilds the shipped executable byte for byte with the original toolchain:
+C source of `KGT2nd_GAME.exe` that rebuilds the shipped executable byte for byte with the original toolchain:
 
 ```
 SHA-256 287c6f39aea5265b126dff301af9e8fdf49e6edc78957eeb50aba38e6705326a  KGT2nd_GAME.exe
-```
-
-This repository contains only what the build needs. The decompilation work itself - matching tools,
-the Ghidra notes, rename history and style guide - is in the development repository `kgt2nd_decomp`,
-and what was learned about VC6 in `vc6-matching-notes`. Source comments that mention `docs/...` or
-`tools/...` files not present here refer to the development repository.
-
-The executable's embedded artwork (three 640x480 bitmaps, a text bitmap and the icon) is in
-`rsrc/assets/`; these are Enterbrain's copyrighted images, so keep that in mind before publishing the
-repository. No other game data is included.
+``
 
 ## Requirements
 
@@ -25,8 +15,6 @@ repository. No other game data is included.
 * **[JWasm](https://github.com/JWasm/JWasm) 2.x** (assembles the blitter into an OMF object). Put
   `JWasm.exe` in `tools/bin/` (ignored by git), on `PATH`, or point `KGT_JWASM` at it.
 * **Python 3** with the packages in `requirements.txt` (`pip install -r requirements.txt`).
-
-The original executable is not needed.
 
 ## Building
 
@@ -72,7 +60,7 @@ original order):
 
 | path | contents |
 |---|---|
-| `build.py` | the build |
+| `build.py` | the build tool |
 | `src/*.c` | the game, one file per original translation unit, in link order (see `SOURCES` in `build.py`) |
 | `src/cppunit.cpp` | stand-in for the original's one C++ translation unit, which left no code behind |
 | `src/exe.def` | the original's empty `EXPORTS` .def file (hence the empty export directory) |

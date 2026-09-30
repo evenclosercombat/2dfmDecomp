@@ -2131,7 +2131,7 @@ void vWindowBltFuncs(void)
  * characters, the system and the stage.
  * Globals: changes giObjectCount, gkgtDrawLayers, gkgtDrawNodes, gpDrawNodeNext, giEngineObjectIter,
  * gpkgtCurrentEngineObject, gkgtLoadedCharacter[].iFlashTimeLeft, giSystemFlashTimeLeft,
- * giStageFlashTimeLeft; everything the handlers change.
+ * giStageFlashTimeLeft.
  */
 void vProcessEngineObjects(void)
 {

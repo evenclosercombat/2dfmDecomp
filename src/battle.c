@@ -15,7 +15,7 @@
  *     left/right), bits 4-9 buttons A-F, 0x100 also the line-switch button;
  *   * a "(step << 16) | skill" int names a script position (DS branches, hit junctions, loops).
  *
- * The second half (from vHandleCpuCommands) was a separate file (battle_b.c) appended to this one;
+ * The second half (from vHandleCpuCommands) was originally a separate file (battle_b.c) appended to this one;
  * it repeats the extern declarations it needs.
  */
 #include "kgt.h"
@@ -37,7 +37,7 @@ void vAddToSpecialGauge(int iPlayerIdx, int iAdd);
 void vAddToHealth(kgt_character_struct *pChar, int iLifeAdd);
 /* ------------------------------------------------------------------------------------------ */
 
-/* An attack (FA, 0x18) or guard (FD, 0x19) box script step: the view of the steps that
+/* An attack (FA, 0x18) or guard (FD, 0x19) hit/hurtbox script step: the view of the steps that
    kgtEngineObject.pAttackBoxes / pGuardBoxes point into (same bytes as kgtScriptStep.box). */
 #pragma pack(push, 1)
 typedef struct kgtHitboxStep {
@@ -95,14 +95,13 @@ int giCpuDirTableB[16] = { 0, 0, 1, 9, 8, 10, 2, 6, 4, 5, 2, 4, 1, 8, 0, 0 };  /
 char gszObjDeleted[] = "OBJ\217\301\226\305 / %d , %d / %s";  /* OBJ消滅 / %d , %d / %s */
 
 /*
- * Deletes the current engine object (the name comes from the Ghidra database; nothing here checks
- * hit boxes): an object created by a character (STORY_ENGINE_OBJECT) is removed from the owner's
+ * Deletes the current engine object: an object created by a character (STORY_ENGINE_OBJECT) is removed from the owner's
  * M-number slots, its after-image trail is released, and its handler becomes RESET_IDX so the engine
  * frees it.  Called when a script ends or an object leaves the screen or loses its parent.
  * Globals: reads gpkgtCurrentEngineObject; changes gkgtLoadedCharacter[].pMNumberObjs and
  * gAfterImageTrails[].bInUse.
  */
-void vStoryHitboxCheck(void)
+void vDeleteCurrentEngineObject(void)
 {
     kgtEngineObject *pObj = gpkgtCurrentEngineObject;
     kgt_character_struct *pChar;
@@ -4070,7 +4069,7 @@ extern int giCameraY;                              /* 0x447f30: camera y (pixels
 kgtEngineObject *kgtoNewEngineObject(kgtJumptableEndpoints iJumpIdx, int iDepth, int iPosX, int iPosY);
 void vAddToSpecialGauge(int iPlayerIdx, int iAdd);
 void vAddToHealth(kgt_character_struct *pChar, int iLifeAdd);
-void vStoryHitboxCheck(void);
+void vDeleteCurrentEngineObject(void);
 void iResetDsSkillIndices(void);
 
 void vResetReactionSkillBlock(kgtEngineObject *pObj);
@@ -4892,12 +4891,12 @@ void vjmpReadScript(void)
             if ((gpkgtCurrentEngineObject->iPosX < -0x320000 || gpkgtCurrentEngineObject->iPosX > 0x5320000
                  || gpkgtCurrentEngineObject->iPosY < -0x320000 || gpkgtCurrentEngineObject->iPosY > 0x3f20000)
                 && !(gpkgtCurrentEngineObject->iFlags & 0x20000000))
-                vStoryHitboxCheck();
+                vDeleteCurrentEngineObject();
             if (0)      /* debug output, disabled in the release (the format stays in .data) */
                 sprintf(szMsg, "OBJ\217\301\226\305 / %d , %d / %d", gpkgtCurrentEngineObject->iPosX, gpkgtCurrentEngineObject->iPosY, gpkgtCurrentEngineObject->iPlayerIdx);   /* OBJ消滅 (object deleted) */
             /* a follower goes with its parent */
             if ((gpkgtCurrentEngineObject->iFlags & 0x20000000) && gpkgtCurrentEngineObject->pParent->iJumpIdx == RESET_IDX)
-                vStoryHitboxCheck();
+                vDeleteCurrentEngineObject();
             break;
         case CHARACTER_ENGINE_OBJECT:
             /* the R1 companion: follows its player (on the ground) while the player shows a script image */
@@ -4982,7 +4981,7 @@ end_of_skill:
             case STORY_ENGINE_OBJECT:
                 if (gpkgtCurrentEngineObject->iStartSkillIdx == (WORD)pOwner->shSkillIdxCharSelectPic) {
                     if (gpkgtCurrentEngineObject->iDrawFlag == 0) {
-                        vStoryHitboxCheck();
+                        vDeleteCurrentEngineObject();
                         return;
                     }
                     gpkgtCurrentEngineObject->iSkillIdx = gpkgtCurrentEngineObject->iStartSkillIdx;
@@ -5734,5 +5733,5 @@ next_step:
 
 destroy:
     /* delete the object */
-    vStoryHitboxCheck();
+    vDeleteCurrentEngineObject();
 }
