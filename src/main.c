@@ -39,7 +39,7 @@ void vMemzero(void *pAddress, size_t uSize)
 {
     char *pByte;
 
-    /* a zero size is reported ("memzero : size zero, you fool") and nothing is done */
+    /* a zero size is reported ("memzero : size zero") and nothing is done */
     if (uSize == 0) {
         vSpawnTaskModalWithWarning("memzero : \221\345\202\253\202\263\202O\202\276\202\274\202\261\202\347");  /* memzero : 大きさ０だぞこら */
         return;
