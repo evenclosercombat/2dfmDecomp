@@ -12,7 +12,7 @@ SHA-256 287c6f39aea5265b126dff301af9e8fdf49e6edc78957eeb50aba38e6705326a  KGT2nd
 * **Microsoft Visual C++ 6.0**, RTM (`cl` 12.00.8168, `link` 6.00.8168, `rc`, `cvtres` 5.00.1720).
   The build expects it in `C:\Program Files (x86)\Microsoft Visual Studio`; set `VC6DIR` otherwise.
   The Rich header records these RTM builds; the match has only been checked with them.
-* **[JWasm](https://github.com/JWasm/JWasm) 2.x** (assembles the blitter into an OMF object). Put
+* **[JWasm](https://github.com/JWasm/JWasm / https://github.com/Baron-von-Riedesel/JWasm/releases) 2.x** (assembles the blitter into an OMF object). Put
   `JWasm.exe` in `tools/bin/` (ignored by git), on `PATH`, or point `KGT_JWASM` at it.
 * **Python 3** with the packages in `requirements.txt` (`pip install -r requirements.txt`).
 
