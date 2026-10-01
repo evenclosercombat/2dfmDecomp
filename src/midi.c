@@ -1,6 +1,6 @@
 /*
- * midi.c - MIDI playback for the sounds of the game data whose type is "MIDI" (kgtSound.cFlags & 0xf
- * == 2, bit 0x10 = loop; see vHandleLoadingSound in main.c): the Standard MIDI File held in memory
+ * midi.c - MIDI playback for the sounds of the game data whose kind is "MIDI" (kgtSound.cFlags & 0xf
+ * == 2, bit 0x10 = loop; see vHandlePlayingSingleSound in main.c): the Standard MIDI File held in memory
  * is written to a temporary .mid file in the Windows directory and played by the MCI sequencer.
  *
  * Playback notifies the window (MM_MCINOTIFY) when it ends; the main window procedure then calls

@@ -7,3 +7,4 @@ tools/bin/
 # python by-products
 *.pyc
 __pycache__/
+.vscode/c_cpp_properties.json

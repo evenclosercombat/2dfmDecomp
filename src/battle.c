@@ -5452,7 +5452,7 @@ clear_box:
             break;
 
         case 0x03:      /* S: sound */
-            vHandleLoadingSound(&pOwner->kgtCore.pkgtSounds[pStep->sound.wSound]);
+            vHandlePlayingSingleSound(&pOwner->kgtCore.pkgtSounds[pStep->sound.wSound]);
             break;
 
         case 0x0e:      /* EB: palette flash / picture sway */

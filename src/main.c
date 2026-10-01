@@ -38,13 +38,13 @@ void vMemzero(void *pAddress, int iSize)
 {
     char *pByte;
 
-    /* a zero size is reported ("memzero : size zero, you fool") and nothing is done */
+    /* a zero size is reported ("memzero : size zero") and nothing is done */
     if (iSize == 0) {
         vSpawnTaskModalWithWarning("memzero : \221\345\202\253\202\263\202O\202\276\202\274\202\261\202\347");  /* memzero : 大きさ０だぞこら */
         return;
     }
     pByte = (char *)pAddress;
-    /* matching: this loop form gives the original's plain byte loop (no rep stos) */
+    /* matching: this loop form gives the original's plain byte loop */
     while (iSize--)
         *pByte++ = 0;
 }
@@ -57,7 +57,7 @@ void vMemzero(void *pAddress, int iSize)
  */
 void vSetupDsound(void)
 {
-    /* no wave objects yet (11 banks of 256) */
+    /* no wave objects yet (11 banks of 256 wave objects each) */
     vMemzero(gpWavs, sizeof(gpWavs));
     /* NULL = the default device */
     if (SUCCEEDED(DirectSoundCreate(NULL, &gpDirectSound, NULL))) {
@@ -120,14 +120,13 @@ void vStopCdAudio2(void)
 }
 
 /*
- * Plays one sound of a loaded KGT file (sound script commands, BGM selections).  Despite the Ghidra
- * name nothing is loaded here; the kind is the low nibble of pSound->cFlags:
+ * Plays one sound of a loaded KGT file (sound script commands, BGM selections).  The kind of sound is the low nibble of pSound->cFlags:
  *   0 stop all sound, 1 wave (restarted from the beginning), 2 MIDI (written to a file and played
  *   through MCI), 3 CD audio track pSound->cCdTrack.  Flag 0x10 loops waves and CD tracks.
  * Parameters: pSound - the sound (kgt_core.pkgtSounds entry).
  * Globals: reads giDsoundInitializedFlag.
  */
-void vHandleLoadingSound(kgtSound *pSound)
+void vHandlePlayingSingleSound(kgtSound *pSound)
 {
     LPDIRECTSOUNDBUFFER pBuffer;
 
@@ -1297,7 +1296,7 @@ int iClearCharacterFile(int iPlayerIdx)
 
 /*
  * Loads character iCharacterIdx of the system file's list into player slot iPlayerIdx, unless the slot
- * holds it already.  The file is "<name>.player" (in test play the editor's "<name>.player.t" first):
+ * holds it already.  The file is "<name>.player" (in test - "<name>.player.t" ):
  * 16-byte signature (not checked), the common KGT part (bReadKgtCore, wave bank 3 + iPlayerIdx), three
  * counted tables (int count + entries: commands, hit junctions, common images; the counts are not
  * checked against the table sizes) and four fixed-size blocks read straight into the structure.
@@ -1432,7 +1431,7 @@ int iOpenKgtSystemFile(char *szFile)
         } else {
             bTestFile = 1;
         }
-    } else {
+    } else { //If normal play
         hFile = CreateFileA(szFile, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (hFile == INVALID_HANDLE_VALUE) {
             /* no game data: start the editor instead and quit */
@@ -1524,7 +1523,7 @@ int iOpenDemoFile(int iDemo)
             if (hFile == INVALID_HANDLE_VALUE)
                 goto open_error;
         }
-    } else {
+    } else { //if normal play
         sprintf(szFile, "%s.demo", gkgtKgtSystem.szDemoNames[iDemo]);
         hFile = CreateFileA(szFile, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (hFile == INVALID_HANDLE_VALUE)
@@ -1598,7 +1597,7 @@ int iOpenStageFile(int iStage)
             if (hFile == INVALID_HANDLE_VALUE)
                 goto open_error;
         }
-    } else {
+    } else { //if normal play
         sprintf(szFile, "%s.stage", gkgtKgtSystem.szStageNames[iStage]);
         hFile = CreateFileA(szFile, GENERIC_READ, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (hFile == INVALID_HANDLE_VALUE)
@@ -1856,7 +1855,8 @@ int iLoadExternalImage(kgtBMPINFO *pInfo, LPCSTR szResource, LPCSTR szFile, int 
         iColors = 0;
         break;
     default:
-        vSpawnTaskModalWithWarning("load_bmp : \226\242\203T\201[\203|\201[\203g\203p\203\214\203b\203g\202\314BMP\202\276\202\265\202\346");  /* load_bmp : 未サーポートパレットのBMPだしよ */
+        vSpawnTaskModalWithWarning("load_bmp : \226\242\203T\201[\203|\201[\203g\203p\203\214\203b\203g\202\314BMP\202\276\202\265\202\346");  
+        /* load_bmp : 未サーポートパレットのBMPだしよ */
         goto error;
     }
 have_colors:
@@ -2246,7 +2246,7 @@ void vHandleDrawing(void)
         for (i = 1; i < 8; i++) {
             pChar = &gkgtLoadedCharacter[i];
             if (pChar && pChar->iOnlineState && pChar->iHealth && pChar->iShowLife && pChar->bImageShown) {
-                /* a 50-pixel bar centred over the character (16.16 position -> pixels, minus the camera):
+                /* a 50-pixel bar centered over the character (16.16 position -> pixels, minus the camera):
                    darkened backdrop (blend 1 = 50 % mix), life in green (RGB555 0x3e0; the red term iLifeWidth / 323 is
                    always 0 for these widths), then the recent damage in red (0x7c00) */
                 iLifeWidth = pChar->iHealth * 50 / pChar->iLifeMax;

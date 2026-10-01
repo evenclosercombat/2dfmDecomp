@@ -1,6 +1,6 @@
 /*
  * cdaudio.c - CD audio (Red Book) playback through MCI, for the sounds of the game data whose type
- * is "CD track" (kgtSound.cFlags & 0xf == 3, bit 0x10 = loop; see vHandleLoadingSound in main.c).
+ * is "CD track" (kgtSound.cFlags & 0xf == 3, bit 0x10 = loop; see vHandlePlayingSingleSound in main.c).
  *
  * A track is played from its start to the start of the next track with MCI_NOTIFY, so the window
  * receives MM_MCINOTIFY when it ends; the main window procedure then replays it when giDiscLoopFlag

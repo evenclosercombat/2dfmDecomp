@@ -338,7 +338,7 @@ void vSpawnStageScripts(void)
         }
     }
     /* stage BGM */
-    vHandleLoadingSound(&gkgtLoadedStage.kgtCore.pkgtSounds[gkgtLoadedStage.wBgmSelection]);
+    vHandlePlayingSingleSound(&gkgtLoadedStage.kgtCore.pkgtSounds[gkgtLoadedStage.wBgmSelection]);
 }
 
 /*
@@ -382,7 +382,7 @@ void vSpawnEngineObjectForDemoSkills(void)
         }
     }
     /* demo BGM, play time (frames, 0 = no limit) and skip-with-input flag */
-    vHandleLoadingSound(&gkgtLoadedDemo.kgtCore.pkgtSounds[gkgtLoadedDemo.wBgmSelection]);
+    vHandlePlayingSingleSound(&gkgtLoadedDemo.kgtCore.pkgtSounds[gkgtLoadedDemo.wBgmSelection]);
     giDemoTime = gkgtLoadedDemo.iTime;
     gcDemoSkipWithInput = gkgtLoadedDemo.cSkipWithInput;
 }
