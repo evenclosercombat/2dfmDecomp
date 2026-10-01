@@ -1,28 +1,6 @@
 # KGT2nd_GAME
 
-C source of `KGT2nd_GAME.exe`, the game runtime of *2D Fighter Maker 2nd* (2D格闘ツクール2nd.,
-Enterbrain, 2002).
-
-**This is the `win64` branch: the plain-C port of the `nonmatching` branch to 64-bit Windows.** One
-source tree, built with clang from llvm-mingw, gives two programs: a native x86-64 executable (the
-default) and the 32-bit (i686) program of the `nonmatching` branch, with the original's memory
-layout. Both play like the original and read the game data files unchanged. The other branches:
-
-* **`main`**: the exact rebuild of the original executable (SHA-256
-  `287c6f39aea5265b126dff301af9e8fdf49e6edc78957eeb50aba38e6705326a`) with Visual C++ 6.0, the
-  blitter assembled with JWasm; the 6 functions whose C VC6 does not yet compile to the original bytes
-  are built there from the original's machine code;
-* **`nonmatching`**: every function compiled from C, 32-bit only, built with clang.
-
-This repository contains only what the build needs. The decompilation work itself - matching tools,
-the Ghidra notes, rename history and style guide - is in the development repository `kgt2nd_decomp`,
-and what was learned about VC6 in `vc6-matching-notes`. Source comments that mention `docs/...` files
-or VC6 code generation (the `matching:` notes, the "VC6 history" paragraphs) refer to that work and to
-the main branch; on this branch all code is plain C compiled by clang.
-
-The executable's embedded artwork (three 640x480 bitmaps, a text bitmap and the icon) is in
-`rsrc/assets/`; these are Enterbrain's copyrighted images, so keep that in mind before publishing the
-repository. No other game data is included.
+This is a plain-C port of the original KGT2nd_Game.exe, built off of the 'non-matching' branch. It is untested with helper programs that use memory injection to add additional features to 2DFM, such as rollback launchers.
 
 ## Requirements
 
@@ -117,26 +95,9 @@ build.cmd build\kgt2nd.res.o
 For the 32-bit build use `i686-w64-mingw32-windres ... -o build/kgt2nd_x86.res.o` and
 `build.cmd x86 build\kgt2nd_x86.res.o`. The game itself still uses the compiled-in copies.
 
-## Running
+## Changes from `nonmatching`
 
-Copy the executable into the game's folder, next to its data files, under the name of the game's
-executable: the game loads the system file named after the executable (`NAME.exe` loads `NAME.kgt`),
-except that a name starting with `KGT` (such as `KGT2nd_GAME.exe` itself) loads the file whose full
-path is `Filename` in the `[File]` section of `game.ini`, as in test play from the editor. Settings
-are read from `game.ini` in the same folder.
-
-* **DirectPlay**: the netplay dialog uses DirectPlay; the shipped menu does not offer it (menu command
-  2601 is not in the menu), but the service providers are enumerated at start-up. The 32-bit build
-  imports `dplayx.dll` like the original; on Windows 10/11 DirectPlay is an optional feature ("Legacy
-  Components"), and if Windows offers to install it, the game runs either way. The 64-bit build loads
-  `dplayx.dll` at start-up instead of importing it (llvm-mingw has no x86-64 import library for it, and
-  64-bit Windows has a 64-bit `dplayx.dll` only with the DirectPlay feature installed); without it the
-  list of service providers is empty and the netplay dialog reports that DirectPlay could not be
-  created.
-
-## How this branch differs from `nonmatching`
-
-The original keeps pointers in 32-bit places: in structures that are also file records, in `int`
+Non-matching keeps pointers in 32-bit places: in structures that are also file records, in `int`
 fields, and in one block of uninitialized globals laid out at fixed offsets. The port keeps the
 behaviour and the file formats and gives the pointers room:
 
@@ -183,23 +144,6 @@ behaviour and the file formats and gives the pointers room:
   change.
 * `build.cmd` builds either target (x86-64 by default).
 
-Everything else is as on the `nonmatching` branch:
-
-* **Resources** (`src/resources.c`, generated from `rsrc/kgt2nd.rc` by `tools/gen_resources.py`):
-  the bitmaps and the icon are included with `#embed`, the menu and dialog templates are written out
-  as data (identical to the original's), and a few functions stand in for the resource APIs
-  (`FindResource`/`LockResource`, `LoadIcon`, the class menu, `DialogBoxParam`). Rerun the script
-  (Python 3) only after changing the `.rc`; the build does not need it.
-* **The blitter** (`src/blit.c`): the hand-written assembler routines of the original, in C.
-* **Portability fixes**, each commented in the source: undefined behaviour that VC6 happened to
-  compile as intended but a modern optimizer may not (a parameter read through its neighbour's
-  address, `sprintf` onto its own argument, uninitialized locals, out-of-range shift counts), enums
-  kept `int` as with MSVC, a function that returned no value, and a `GlobalFree` of a resource pointer
-  (harmless in the original, fatal in this build).
-* Everything VC6-specific that only served the byte match (the C++ stub, the empty `.def` file, the
-  post-link steps) is gone; the `matching:` constructions inside the C (empty `boundaryN` labels,
-  `iStackPadN` locals, dead stores) are kept, so that the source stays comparable with `main`.
-
 ## Limitations of the 64-bit build
 
 * Where the original reads or writes memory through a wrong index rather than a wrong structure
@@ -231,9 +175,3 @@ x86-64 builds were compared this way.
 | `rsrc/kgt2nd.rc`, `rsrc/assets/` | the resources (dialogs, menu, version info) and the embedded images |
 | `tools/gen_resources.py` | regenerates `src/resources.c` from the `.rc` (not needed to build) |
 | `build/` | the output (not in the repository) |
-
-## How the original was built (as far as can be told)
-
-* Visual C++ 6.0, release build with `/Ox /Oa`, statically linked against `LIBC.LIB`, 13 C files, 1
-  C++ file and one assembler object (the blitter); resources replaced after linking with the Win32
-  `UpdateResource` API. The main branch reproduces all of this byte for byte.
