@@ -36,7 +36,7 @@ void vReleaseDsound(void);
 void vStopAndResetAllWavs(void);
 void vStopMidi(void);
 void vStopCdAudio2(void);
-void vHandleLoadingSound(kgtSound *pSound);
+void vHandlePlayingSingleSound(kgtSound *pSound);
 void vHandleStoppingAllWavs(int iSoundKind);
 void vFreeKgtCore(kgt_core *pCore);
 int bReadKgtCore(kgt_core *pCore, HANDLE hFile);

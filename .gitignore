@@ -3,3 +3,5 @@ build/
 # python by-products (tools/gen_resources.py)
 *.pyc
 __pycache__/
+# editor settings
+.vscode/c_cpp_properties.json
