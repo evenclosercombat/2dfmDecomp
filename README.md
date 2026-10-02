@@ -4,7 +4,9 @@ C source of `KGT2nd_GAME.exe` that rebuilds the shipped executable byte for byte
 
 ```
 SHA-256 287c6f39aea5265b126dff301af9e8fdf49e6edc78957eeb50aba38e6705326a  KGT2nd_GAME.exe
-``
+```
+
+Entry point is ```WinMain()```
 
 ## Requirements
 
